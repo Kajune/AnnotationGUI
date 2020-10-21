@@ -58,6 +58,11 @@
 </script>
 
 <?php
+	$enames = scandir('../../projects');
+
+	$min_fps = 0.01;
+	$max_fps = 100;
+
 	if($_SERVER['REQUEST_METHOD'] === 'POST'){
 		$name = $_POST['artwork-name'];
 		$tag = $_POST['artwork-tag'];
@@ -65,8 +70,8 @@
 
 		$bad_flag = false;
 		foreach ($names as $ename) {
-			if (strcmp($name, $ename[0]) == 0) {
-				echo '<script type="text/javascript">failAlert("既に存在している美術品名です。")</script>';
+			if (strcmp($name, $ename) == 0) {
+				echo '<script type="text/javascript">failAlert("Specified project name already exists.")</script>';
 				$bad_flag = true;
 				break;
 			}
@@ -98,27 +103,30 @@
 ?>
 
 	<form method="POST" class="form-group row" id="form" enctype="multipart/form-data">
-		<div class="col-lg-5">
+		<div class="col-lg-6">
 			<label for="video-file">Video File</label><br>
-			<img src="" id="thumbnail" style="max-width: 15vw; height: auto;">
-			<input type="file" name="video-file" accept="video/*" id="video-file" required onchange="videoChange(event)"><br>
+			<video src="" id="video-preview" style="max-width: 30vw; height: auto;" controls></video>
+			<input type="file" name="video-file" accept="video/*" id="video-file" required onchange="selectVideo(event)"><br>
+			<small style="color: red;" id="video_error" hidden></small>
 		</div>
 
-		<div class="col-lg-7">
+		<div class="col-lg-6">
 			<label for="project-name">Project Name</label>
-			<input type="text" class="form-control" name="project-name" placeholder="Project Name" id="artwork-name" required onchange="nameChange(event);">
+			<input type="text" class="form-control" name="project-name" placeholder="Project Name" id="project-name" required onchange="checkInputs();">
 			<small style="color: red;" id="duplicate_error" hidden>Name already exists.</small>
 			<br>
 
 			<div class="row">
 				<div class="col-3">
 					<label for="annotation-fps">Annotation FPS</label>
-					<input type="number" min=0.01 max=100 class="form-control" name="annotation-fps" placeholder="FPS" value=1>
+					<input type="number" min=<?php echo $min_fps;?> max=<?php echo $max_fps;?> step=0.01 class="form-control" name="annotation-fps" id="fps" placeholder="FPS" value=1 required onchange="checkInputs();">
+					<small style="color: red;" id="fps_error" hidden><?php echo $min_fps;?> to <?php echo $max_fps;?></small>
 				</div>
 
 				<div class="col-9">
 					<label for="label-specification">Label Specification or Annotation File in Progress</label><br>
-					<input type="file" name="label-specification" accept="text/*" id="label-specification" required onchange="labelChange(event)"><br>
+					<input type="file" name="label-specification" accept="text/*" id="label-specification" required onchange="selectLabel(event);">
+					<small style="color: red;" id="label_error" hidden></small>
 				</div>
 			</div>
 			<br>
@@ -135,26 +143,52 @@
 </div>
 
 <script type="text/javascript">
-	var existing_names = <?php echo json_encode($names); ?>;
+	var existing_names = <?php echo json_encode($enames); ?>;
 
-	function imgChange(e) {
+	function selectVideo(e) {
 		var reader = new FileReader();
 		reader.onload = function (e) {
-			document.getElementById("thumbnail").src = e.target.result;
+			$('#video-preview').attr('src', e.target.result);
+			checkInputs();
 		}
 		reader.readAsDataURL(e.target.files[0]);
 	}
 
-	function nameChange(e) {
+	function selectLabel(e) {
+		checkInputs();
+	}
+
+	function checkInputs() {
+		var isOK = true;
+
+		// Check project name
 		for (const ename of existing_names) {
-			if (ename[0] === e.target.value.trim()) {
-				$('#submit').attr('disabled', true);
+			if (ename === $('#project-name').val().trim()) {
 				$('#duplicate_error').attr('hidden', false);
-				return;
+				isOK = false;
 			}
 		}
-		$('#submit').attr('disabled', false);
-		$('#duplicate_error').attr('hidden', true);
+
+		// Check fps
+		var fps = $('#fps').val();
+		if (fps < <?php echo $min_fps;?> || <?php echo $max_fps;?> < fps) {
+			$('#fps_error').attr('hidden', false);
+			isOK = false;
+		}
+
+		// Check video file
+
+		// Check label specification
+
+		if (isOK) {
+			$('#submit').attr('disabled', false);
+			$('#duplicate_error').attr('hidden', true);
+			$('#fps_error').attr('hidden', true);
+			$('#label_error').attr('hidden', true);
+			$('#video_error').attr('hidden', true);
+		} else {
+			$('#submit').attr('disabled', true);			
+		}
 	}
 </script>
 
