@@ -1,0 +1,6 @@
+*.*
+!.gitignore
+!*.html
+!*.php
+!*.py
+!*.css
