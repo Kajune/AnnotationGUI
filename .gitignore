@@ -4,3 +4,5 @@
 !*.php
 !*.py
 !*.css
+!*.sh
+!*.bat
