@@ -1,0 +1,46 @@
+/* このコメントアウトを外すとエヴァ風になる */
+/*body, .card, .btn, .btn-lg, button, .btn-sm {
+	font-family: 'Noto Serif JP', serif;
+	font-weight: bold;
+	background-color: black;
+	color: white;
+	border-color: red;
+}*/
+
+.header {
+	text-align: center;
+	line-height: 200%;
+	margin: auto;
+	padding-top: 50px;
+}
+
+.main {
+	text-align: center;
+	line-height: 100%;
+	margin: auto;
+	padding-top: 20px;
+}
+
+span {
+	display: inline-block;
+}
+
+a:link {
+	text-decoration: none;
+}
+
+
+.insideWrapper{ 
+	width:100%; height:100%; 
+	position:relative;
+}
+
+.coveredImage{ 
+	width:100%; height:100%; 
+	position:absolute; top:0px; left:0px;
+}
+
+.coveringCanvas{ 
+	width:100%; height:100%; 
+	position:absolute; top:0px; left:0px;
+}
