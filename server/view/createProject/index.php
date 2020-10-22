@@ -58,18 +58,17 @@
 </script>
 
 <?php
-	$enames = scandir('../../projects');
+	$enames = scandir('../../projects/');
 
 	$min_fps = 0.01;
 	$max_fps = 100;
 
 	if($_SERVER['REQUEST_METHOD'] === 'POST'){
-		$name = $_POST['artwork-name'];
-		$tag = $_POST['artwork-tag'];
-		$comment = $_POST['artwork-comment'];
+		$name = $_POST['project-name'];
+		$fps = $_POST['annotation-fps'];
 
 		$bad_flag = false;
-		foreach ($names as $ename) {
+		foreach ($enames as $ename) {
 			if (strcmp($name, $ename) == 0) {
 				echo '<script type="text/javascript">failAlert("Specified project name already exists.")</script>';
 				$bad_flag = true;
@@ -78,25 +77,13 @@
 		}
 
 		if (!$bad_flag) {
-			if(isset($_FILES) && isset($_FILES['artwork-image']) && is_uploaded_file($_FILES['artwork-image']['tmp_name'])){
-				$a = uniqid().'.jpg';
-				if (move_uploaded_file($_FILES['artwork-image']['tmp_name'], '../img/artwork/'.$a)) {
-					$name = htmlspecialchars($name);
-					$tag = htmlspecialchars($tag);
-					$comment = htmlspecialchars($comment);
-
-					$stmt = mysqli_prepare($sql, "INSERT INTO artwork (name, tag, comment, img, last_update) VALUES (?,?,?,?, CURDATE())");
-					mysqli_stmt_bind_param($stmt, "ssss", $name, $tag, $comment, $a);
-					if (mysqli_stmt_execute($stmt)) {
-						echo '<script type="text/javascript">successAlert()</script>';
-					} else {
-						echo mysqli_error($sql);
-					}
-				} else {
-					echo '<script type="text/javascript">failAlert("ファイルのアップロードに失敗しました。")</script>';
-				}
+			if(isset($_FILES) 
+				&& isset($_FILES['video-file']) && is_uploaded_file($_FILES['video-file']['tmp_name'])
+				&& isset($_FILES['label-specification']) && is_uploaded_file($_FILES['label-specification']['tmp_name'])){
+				var_dump($_FILES);
+				echo '<script type="text/javascript">successAlert()</script>';
 			} else {
-				echo '<script type="text/javascript">failAlert("ファイルのアップロードに失敗しました。")</script>';
+				echo '<script type="text/javascript">failAlert("File upload failed.")</script>';
 			}
 		}
 	}
@@ -112,7 +99,7 @@
 
 		<div class="col-lg-6">
 			<label for="project-name">Project Name</label>
-			<input type="text" class="form-control" name="project-name" placeholder="Project Name" id="project-name" required onchange="checkInputs();">
+			<input type="text" class="form-control" name="project-name" pattern="^[0-9A-Za-z_]+$" placeholder="A-Z a-z 0-9 _" id="project-name" required onchange="checkInputs();">
 			<small style="color: red;" id="duplicate_error" hidden>Name already exists.</small>
 			<br>
 
@@ -125,8 +112,20 @@
 
 				<div class="col-9">
 					<label for="label-specification">Label Specification or Annotation File in Progress</label><br>
-					<input type="file" name="label-specification" accept="text/*" id="label-specification" required onchange="selectLabel(event);">
+					<input type="file" name="label-specification" accept="application/json" id="label-specification" required onchange="selectLabel(event);"><br>
 					<small style="color: red;" id="label_error" hidden></small>
+				</div>
+			</div>
+			<br>
+
+			<div class="row">
+				<div class="col-6">
+					<label for="class-list">Class</label><br>
+					<textarea class="form-control" name="class-list" id="class-list" readonly rows="5"></textarea>					
+				</div>
+				<div class="col-6">
+					<label for="attribution-list">Attribution</label><br>
+					<textarea class="form-control" name="attribution-list" id="attribution-list" readonly rows="5"></textarea>
 				</div>
 			</div>
 			<br>
@@ -143,23 +142,43 @@
 </div>
 
 <script type="text/javascript">
+	sanitaize = {
+		encode : function (str) {
+			return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+		},
+
+		decode : function (str) {
+			return str.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, '\'').replace(/&amp;/g, '&');
+		}
+	};
+
 	var existing_names = <?php echo json_encode($enames); ?>;
 
 	function selectVideo(e) {
 		var reader = new FileReader();
+		var filename = sanitaize.encode(e.target.files[0].name.split('.').slice(0, -1).join('.'));
 		reader.onload = function (e) {
 			$('#video-preview').attr('src', e.target.result);
+			if (!$('#project-name').val()) {
+				$('#project-name').val(filename);
+			}
 			checkInputs();
 		}
 		reader.readAsDataURL(e.target.files[0]);
 	}
 
+	var jsonData = null;
 	function selectLabel(e) {
-		checkInputs();
+		var reader = new FileReader();
+		reader.onload = function (e) {
+			jsonData = e.target.result;
+			checkInputs();
+		}
+		reader.readAsText(e.target.files[0]);
 	}
 
-	function checkInputs() {
-		var isOK = true;
+	function checkInputs(isOK_=true) {
+		var isOK = isOK_;
 
 		// Check project name
 		for (const ename of existing_names) {
@@ -179,6 +198,28 @@
 		// Check video file
 
 		// Check label specification
+		if (jsonData) {
+			try {
+				var label = JSON.parse(jsonData);
+
+				if (label.categories === undefined || label.attributes === undefined) {
+					$('#label_error').text('categories or attributes entity not set in JSON.');
+					$('#label_error').attr('hidden', false);
+					$('#label-specification').val('');
+					isOK = false;
+				} else {
+					$('#class-list').text(label.categories.map(x => x.name).join('\n'));
+					$('#attribution-list').text(label.attributes.map(x => x.name).join('\n'));
+					console.log(label.attributes);
+					console.log(label.categories);
+				}
+			} catch (error) {
+				$('#label_error').text(error.message);
+				$('#label_error').attr('hidden', false);
+				$('#label-specification').val('');
+				isOK = false;
+			}
+		}
 
 		if (isOK) {
 			$('#submit').attr('disabled', false);
@@ -187,7 +228,7 @@
 			$('#label_error').attr('hidden', true);
 			$('#video_error').attr('hidden', true);
 		} else {
-			$('#submit').attr('disabled', true);			
+			$('#submit').attr('disabled', true);
 		}
 	}
 </script>
