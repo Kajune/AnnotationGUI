@@ -58,18 +58,20 @@
 </script>
 
 <?php
-	$enames = scandir('../../projects/');
+	$project_dir = '/var/www/html/projects/';
+	$enames = scandir($project_dir);
+
+	$project_name = htmlspecialchars($_POST['project-name']);
+	$annotation_fps = $_POST['annotation-fps'];
 
 	$min_fps = 0.01;
 	$max_fps = 100;
 
 	if($_SERVER['REQUEST_METHOD'] === 'POST'){
-		$name = $_POST['project-name'];
-		$fps = $_POST['annotation-fps'];
-
 		$bad_flag = false;
+
 		foreach ($enames as $ename) {
-			if (strcmp($name, $ename) == 0) {
+			if (strcmp($project_name, $ename) == 0) {
 				echo '<script type="text/javascript">failAlert("Specified project name already exists.")</script>';
 				$bad_flag = true;
 				break;
@@ -80,7 +82,15 @@
 			if(isset($_FILES) 
 				&& isset($_FILES['video-file']) && is_uploaded_file($_FILES['video-file']['tmp_name'])
 				&& isset($_FILES['label-specification']) && is_uploaded_file($_FILES['label-specification']['tmp_name'])){
-				var_dump($_FILES);
+				exec('python3 ../../api/create_project.py '.$project_dir.' '.$project_name.' '.$annotation_fps.' '.
+					$_FILES['video-file']['name'].' '.$_FILES['video-file']['tmp_name'].' '.
+					$_FILES['label-specification']['name'].' '.$_FILES['label-specification']['tmp_name'], $output, $return_var);
+
+				// Sequential image generation is slow, so only image generation process is done in background.
+				// Note that, above process cannot be done in background because tmp file will be gone soon after executing this php block.
+				exec('python3 ../../api/create_images.py '.$project_dir.' '.$project_name.' '.$annotation_fps.' '.
+					$_FILES['video-file']['name'].' > /dev/null &', $output, $return_var);
+
 				echo '<script type="text/javascript">successAlert()</script>';
 			} else {
 				echo '<script type="text/javascript">failAlert("File upload failed.")</script>';
