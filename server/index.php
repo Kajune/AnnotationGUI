@@ -131,7 +131,7 @@
 			clone.find('.project-thumbnail').attr('src', 'projects/' + pname + '/' + project_data[pname].info.video);
 			clone.find('.project-name').text(pname);
 
-			clone.find('.go-manage').attr('href', "./manage/?name=" + pname);
+			clone.find('.go-annotation').attr('href', "./view/annotation?name=" + pname);
 
 			clone.find('.download-annotation').attr('href', 'projects/' + pname + '/annotation.json');
 			clone.find('.download-annotation').attr('download', pname + '_annotation.json');
