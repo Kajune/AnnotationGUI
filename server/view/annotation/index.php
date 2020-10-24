@@ -95,9 +95,11 @@
 			</div>
 		</div>
 
-		<!-- Image Region -->
+		<!-- Right Pane -->
 		<div style="width:80%; height: 100%;">
+			<!-- Image Region -->
 			<canvas style="width: 100%; height: 95%; background-color: #000000"></canvas>
+	
 			<!-- Seek bar -->
 			<form class="range-field form-inline" style="width: 100%; height: 5%;">
 				<div class="form-group" style="width: 10%;">
