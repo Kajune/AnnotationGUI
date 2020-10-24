@@ -2,11 +2,26 @@
 	session_start();
 
 	if (!isset($_GET['name'])) {
-		header('Location:../');
+		header('Location:../../');
 		exit;
 	}
 
+	$project_dir = '/var/www/html/projects/';
+	$project_names = scandir($project_dir);
 	$project_name = $_GET['name'];
+
+	$isOK = false;
+	foreach ($project_names as $name) {
+		if (strcmp($project_name, $name) == 0) {
+			$isOK = true;
+			break;
+		}
+	}
+
+	if (!$isOK) {
+		header('Location:../../');
+		exit;		
+	}
 ?>
 
 <!DOCTYPE html>
@@ -23,7 +38,8 @@
 	<link rel="stylesheet" type="text/css" href="../../css/style.css">
 
 	<script type="text/javascript">
-		var project_name = <?php echo $project_name; ?>
+		var project_name = '<?php echo $project_name; ?>';
+		var project_url = '../../projects/' + project_name + '/';
 	</script>
 
 	<style type="text/css">
@@ -85,7 +101,10 @@
 	<div class="row" style="height: 100%; padding: 1%; padding-top: 0;">
 		<!-- Left Pane -->
 		<div style="width:20%; padding-right: 1%; height: 100%;">
-			<canvas style="height: 25%; width: 100%; background-color: #000000;"></canvas>
+			<div class="insideWrapper" style="height: 25%;">
+				<img src="" class="overedImage" style="max-width: 100%; max-height: 100%;" id="thumb-image">
+				<canvas class="coveringCanvas" id="canvas-thumb"></canvas>
+			</div>
 			<div style="padding-top: 5%;">
 				<button class="btn btn-secondary btn-block">Delete track at current frame</button>
 				<button class="btn btn-secondary btn-block">Delete tracks in subsequent frames</button>
@@ -98,15 +117,15 @@
 		<!-- Right Pane -->
 		<div style="width:80%; height: 100%;">
 			<!-- Image Region -->
-			<canvas style="width: 100%; height: 95%; background-color: #000000"></canvas>
+			<canvas style="width: 100%; height: 95%; background-color: #000000" id="canvas-main"></canvas>
 	
 			<!-- Seek bar -->
 			<form class="range-field form-inline" style="width: 100%; height: 5%;">
 				<div class="form-group" style="width: 10%;">
-					<input type="number" min="1" max="100" value="1" class="form-control" id="current-frame-index" style="width: 50%;">
+					<input type="number" min="1" max="100" value="1" class="form-control" id="current-frame-index" style="width: 50%;" oninput="updateFrameIndex(event.target.value);">
 					<label style="width: 50%;" for="current-frame-index" id="max-frame-index">/100</label>
 				</div>
-				<input type="range" min="0" max="100" value="0" class="slider" id="seekbar"style="width: 90%;" />
+				<input type="range" min="1" max="100" value="1" class="slider" id="seekbar"style="width: 90%;" oninput="updateFrameIndex(event.target.value)"/>
 			</form>
 		</div>
 	</div>
@@ -133,7 +152,81 @@
 </div>
 
 <script type="text/javascript">
-	
+	var annotation = null;
+	var frame_index = 1;
+
+	const anti_alias = 4;
+	const canvas_main = $('#canvas-main')[0];
+	const canvas_thumb = $('#canvas-thumb')[0];
+	canvas_main.width = window.innerWidth * anti_alias;
+	canvas_main.height = window.innerHeight * anti_alias;
+
+	$(window).resize(function () { 
+		canvas_main.width = window.innerWidth * anti_alias;
+		canvas_main.height = window.innerHeight * anti_alias;
+		updateScreen(); 
+	});
+
+	const ctx_main = canvas_main.getContext('2d');
+	const ctx_thumb = canvas_thumb.getContext('2d');
+
+	const current_image = new Image();
+	current_image.onload = () => {
+		var real_scale = Math.min(canvas_main.width / current_image.width, canvas_main.height / current_image.height);
+
+		ctx_main.clearRect(0, 0, canvas_main.width, canvas_main.height);
+		ctx_main.scale(real_scale, real_scale);
+		ctx_main.translate((canvas_main.width / real_scale - current_image.width) / 2, (canvas_main.height / real_scale - current_image.height) / 2);
+		ctx_main.drawImage(current_image, 0, 0);
+		ctx_main.resetTransform();
+	};
+
+	function loadAnnotation() {
+		$.ajaxSetup({ async: false });
+		$.getJSON(project_url + 'annotation.json', (data) => {
+			annotation = data;
+		});
+		$.ajaxSetup({ async: true });
+	}
+
+	function saveAnnotation() {
+		var data = { 'name': project_name, 
+			'annotation': JSON.stringify(annotation, null, '  '),
+		};
+
+		$.ajax({
+			type: "POST",
+			url: './uploadAnnotation.php',
+			dataType: 'json',
+			data: data,
+		});
+	}
+
+	function updateFrameIndex(new_index) {
+		frame_index = new_index;
+
+		$('#current-frame-index').val(frame_index);
+		$('#seekbar').val(frame_index);
+
+		updateScreen();
+	}
+
+	function updateScreen() {
+		current_image.src = project_url + 'images/' + annotation.images[frame_index - 1].file_name;
+
+		$('#thumb-image').attr('src', current_image.src);
+	}
+
+	$(document).ready(function() {
+		loadAnnotation();
+
+		console.log(annotation);
+
+		$('#max-frame-index').text('/' + annotation.images.length);
+		$('#seekbar').attr('max', annotation.images.length);
+
+		updateFrameIndex(annotation.annotations.length + 1);
+	});
 </script>
 </body>
 </html>
