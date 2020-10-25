@@ -84,7 +84,7 @@
 		}
 	</style>
 </head>
-<body>
+<body oncontextmenu="return false;">
 
 <nav class="navbar navbar-dark bg-dark" style="height: 5%; padding-top: 0; padding-bottom: 0;">
 	<a href="#" class="navbar-brand">
@@ -102,7 +102,7 @@
 		<!-- Left Pane -->
 		<div style="width:20%; padding-right: 1%; height: 100%;">
 			<div class="insideWrapper" style="height: 25%;">
-				<img src="" class="overedImage" style="max-width: 100%; max-height: 100%;" id="thumb-image">
+				<img src="" class="overedImage" style="width: 100%; height: 100%;" id="thumb-image">
 				<canvas class="coveringCanvas" id="canvas-thumb"></canvas>
 			</div>
 			<div style="padding-top: 5%;">
@@ -112,6 +112,8 @@
 				<button class="btn btn-secondary btn-block">Link tracklets</button>
 				<button class="btn btn-secondary btn-block">Cut tracklet at current frame</button>
 			</div>
+
+			<div id="test"></div>
 		</div>
 
 		<!-- Right Pane -->
@@ -121,11 +123,11 @@
 	
 			<!-- Seek bar -->
 			<form class="range-field form-inline" style="width: 100%; height: 5%;">
-				<div class="form-group" style="width: 10%;">
+				<div class="form-group" style="width: 15%;">
 					<input type="number" min="1" max="100" value="1" class="form-control" id="current-frame-index" style="width: 50%;" oninput="updateFrameIndex(event.target.value);">
 					<label style="width: 50%;" for="current-frame-index" id="max-frame-index">/100</label>
 				</div>
-				<input type="range" min="1" max="100" value="1" class="slider" id="seekbar"style="width: 90%;" oninput="updateFrameIndex(event.target.value)"/>
+				<input type="range" min="1" max="100" value="1" class="slider" id="seekbar"style="width: 85%;" oninput="updateFrameIndex(event.target.value)"/>
 			</form>
 		</div>
 	</div>
@@ -161,6 +163,12 @@
 	canvas_main.width = window.innerWidth * anti_alias;
 	canvas_main.height = window.innerHeight * anti_alias;
 
+	canvas_main.addEventListener('mousewheel', onMouseWheel, false);
+	canvas_main.addEventListener('wheel', onMouseWheel, false);
+	canvas_main.addEventListener('mousedown', onMouseDown, false);
+	document.addEventListener('mouseup', onMouseUp, false);
+	document.addEventListener('mousemove', onMouseMove, false);
+
 	$(window).resize(function () { 
 		canvas_main.width = window.innerWidth * anti_alias;
 		canvas_main.height = window.innerHeight * anti_alias;
@@ -170,16 +178,17 @@
 	const ctx_main = canvas_main.getContext('2d');
 	const ctx_thumb = canvas_thumb.getContext('2d');
 
-	const current_image = new Image();
-	current_image.onload = () => {
-		var real_scale = Math.min(canvas_main.width / current_image.width, canvas_main.height / current_image.height);
+	var img_x = 0;
+	var img_y = 0;
+	var img_scale = 1;
 
-		ctx_main.clearRect(0, 0, canvas_main.width, canvas_main.height);
-		ctx_main.scale(real_scale, real_scale);
-		ctx_main.translate((canvas_main.width / real_scale - current_image.width) / 2, (canvas_main.height / real_scale - current_image.height) / 2);
-		ctx_main.drawImage(current_image, 0, 0);
-		ctx_main.resetTransform();
-	};
+	var clicked = false;
+
+	var mx = 0;
+	var my = 0;
+
+	const current_image = new Image();
+	current_image.onload = () => { updateCanvas() };
 
 	function loadAnnotation() {
 		$.ajaxSetup({ async: false });
@@ -202,8 +211,11 @@
 		});
 	}
 
+	//
+	// Drawing
+	//
 	function updateFrameIndex(new_index) {
-		frame_index = new_index;
+		frame_index = Math.max(Math.min(new_index, annotation.images.length), 1);
 
 		$('#current-frame-index').val(frame_index);
 		$('#seekbar').val(frame_index);
@@ -216,6 +228,115 @@
 
 		$('#thumb-image').attr('src', current_image.src);
 	}
+
+	function drawMainImage(real_scale) {
+		ctx_main.clearRect(0, 0, canvas_main.width, canvas_main.height);
+		ctx_main.scale(real_scale, real_scale);
+		ctx_main.translate((canvas_main.width / real_scale - current_image.width) / 2, (canvas_main.height / real_scale - current_image.height) / 2);
+		ctx_main.translate(img_x * 0.5 * canvas_main.width / real_scale, -img_y * 0.5 * canvas_main.height / real_scale);
+		ctx_main.drawImage(current_image, 0, 0);
+		ctx_main.resetTransform();
+	}
+
+	function drawSubImage(real_scale) {
+		var left = Math.min(current_image.width, Math.max(0, current_image.width / 2 - ((img_x + 1) / 2) * canvas_main.width / real_scale));
+		var right = Math.min(current_image.width, Math.max(0, current_image.width / 2 + ((1 - img_x) / 2) * canvas_main.width / real_scale));
+		var top = Math.min(current_image.height, Math.max(0, current_image.height / 2 - ((1 - img_y) / 2) * canvas_main.height / real_scale));
+		var bottom = Math.min(current_image.height, Math.max(0, current_image.height / 2 + ((1 + img_y) / 2) * canvas_main.height / real_scale));
+
+		var thumb_scale_x = canvas_thumb.width / current_image.width;
+		var thumb_scale_y = canvas_thumb.height / current_image.height;
+
+		ctx_thumb.lineWidth = 2;
+		ctx_thumb.strokeStyle = 'red';
+		ctx_thumb.clearRect(0, 0, canvas_thumb.width, canvas_thumb.height);
+		ctx_thumb.strokeRect(left * thumb_scale_x, top * thumb_scale_y, (right - left) * thumb_scale_x, (bottom - top) * thumb_scale_y);
+		ctx_thumb.resetTransform();
+	}
+
+	function updateCanvas() {
+		var real_scale = Math.min(canvas_main.width / current_image.width, canvas_main.height / current_image.height) * img_scale;
+
+		img_x = Math.min(img_scale, img_x);
+		img_y = Math.min(img_scale, img_y);
+		img_x = Math.max(-img_scale, img_x);
+		img_y = Math.max(-img_scale, img_y);
+
+		drawMainImage(real_scale);
+		drawSubImage(real_scale);
+	}
+
+	//
+	// Events
+	//
+	function onMouseDown(event) {
+		if (event.button === 2) {
+			clicked = true;
+			event.preventDefault();
+		}
+	}
+
+	function onMouseUp(event) {
+		if (event.button === 2) {
+			clicked = false;
+			event.preventDefault();
+		}
+	}
+
+	function onMouseMove(event) {
+		if (clicked) {
+			var rect = canvas_main.getBoundingClientRect();
+			img_x += (event.x - mx) / (rect.right - rect.left) * 2;
+			img_y += (event.y - my) / (rect.top - rect.bottom) * 2;
+			updateCanvas();
+			event.preventDefault();
+		}
+
+		mx = event.x;
+		my = event.y;
+	}
+
+	function onMouseWheel(event) {
+		var rect = canvas_main.getBoundingClientRect();
+		var x = (event.x - rect.left) / (rect.right - rect.left);
+		var y = (event.y - rect.bottom) / (rect.top - rect.bottom);
+		x = x * 2 - 1
+		y = y * 2 - 1
+
+		// x, y ~ (-1, 1)
+
+		var delta = (typeof event.wheelDeltaY !== 'undefined') ? event.wheelDeltaY : event.deltaY;
+
+		var scale_change = 0.8;
+
+		if (delta > 0) {
+			scale_change = 1 / scale_change;
+		}
+
+		img_scale *= scale_change;
+		if (img_scale < 1) {
+			scale_change /= img_scale;
+			img_scale = 1;
+		}
+		img_x -= x;
+		img_y -= y;
+		img_x *= scale_change;
+		img_y *= scale_change;
+		img_x += x;
+		img_y += y;
+
+		updateCanvas();
+
+		event.preventDefault();
+	}
+
+	document.addEventListener('keydown', (event) => {
+		if (event.key == 'ArrowLeft' || event.key == 'a') {
+			updateFrameIndex(frame_index - 1);
+		} else if (event.key == 'ArrowRight' || event.key == 'd') {
+			updateFrameIndex(frame_index + 1);			
+		}
+	});
 
 	$(document).ready(function() {
 		loadAnnotation();
