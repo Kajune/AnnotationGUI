@@ -190,6 +190,9 @@
 	const current_image = new Image();
 	current_image.onload = () => { updateCanvas() };
 
+	//
+	// Utility
+	//
 	function loadAnnotation() {
 		$.ajaxSetup({ async: false });
 		$.getJSON(project_url + 'annotation.json', (data) => {
@@ -211,6 +214,32 @@
 		});
 	}
 
+	function real_scale() {
+		return Math.min(canvas_main.width / current_image.width, canvas_main.height / current_image.height) * img_scale;
+	}
+
+	function canvasToImage(x, y) {
+		var real_scale_ = real_scale()
+		var canvas_offsetX = (canvas_main.width / real_scale_ - current_image.width) / 2
+		var canvas_offsetY = (canvas_main.height / real_scale_ - current_image.height) / 2
+
+		var x_ = ((-img_x / 2 + x) * canvas_main.width) / real_scale_- canvas_offsetX;
+		var y_ = ((img_y / 2 + y) * canvas_main.height) / real_scale_ - canvas_offsetY;
+
+		return [x_, y_];
+	}
+
+	function imageToCanvas(x, y) {
+		var real_scale_ = real_scale()
+		var canvas_offsetX = (canvas_main.width / real_scale_ - current_image.width) / 2
+		var canvas_offsetY = (canvas_main.height / real_scale_ - current_image.height) / 2
+
+		var x_ = (x + canvas_offsetX) * real_scale_ / canvas_main.width + img_x / 2;
+		var y_ = (y + canvas_offsetY) * real_scale_ / canvas_main.height - img_y / 2;
+
+		return [x_, y_];
+	}
+
 	//
 	// Drawing
 	//
@@ -229,20 +258,22 @@
 		$('#thumb-image').attr('src', current_image.src);
 	}
 
-	function drawMainImage(real_scale) {
+	function drawMainImage() {
+		var real_scale_ = real_scale()
 		ctx_main.clearRect(0, 0, canvas_main.width, canvas_main.height);
-		ctx_main.scale(real_scale, real_scale);
-		ctx_main.translate((canvas_main.width / real_scale - current_image.width) / 2, (canvas_main.height / real_scale - current_image.height) / 2);
-		ctx_main.translate(img_x * 0.5 * canvas_main.width / real_scale, -img_y * 0.5 * canvas_main.height / real_scale);
+		ctx_main.scale(real_scale_, real_scale_);
+		ctx_main.translate((canvas_main.width / real_scale_ - current_image.width) / 2, (canvas_main.height / real_scale_ - current_image.height) / 2);
+		ctx_main.translate(img_x * 0.5 * canvas_main.width / real_scale_, -img_y * 0.5 * canvas_main.height / real_scale_);
 		ctx_main.drawImage(current_image, 0, 0);
 		ctx_main.resetTransform();
 	}
 
-	function drawSubImage(real_scale) {
-		var left = Math.min(current_image.width, Math.max(0, current_image.width / 2 - ((img_x + 1) / 2) * canvas_main.width / real_scale));
-		var right = Math.min(current_image.width, Math.max(0, current_image.width / 2 + ((1 - img_x) / 2) * canvas_main.width / real_scale));
-		var top = Math.min(current_image.height, Math.max(0, current_image.height / 2 - ((1 - img_y) / 2) * canvas_main.height / real_scale));
-		var bottom = Math.min(current_image.height, Math.max(0, current_image.height / 2 + ((1 + img_y) / 2) * canvas_main.height / real_scale));
+	function drawSubImage() {
+		var real_scale_ = real_scale()
+		var left = Math.min(current_image.width, Math.max(0, current_image.width / 2 - ((img_x + 1) / 2) * canvas_main.width / real_scale_));
+		var right = Math.min(current_image.width, Math.max(0, current_image.width / 2 + ((1 - img_x) / 2) * canvas_main.width / real_scale_));
+		var top = Math.min(current_image.height, Math.max(0, current_image.height / 2 - ((1 - img_y) / 2) * canvas_main.height / real_scale_));
+		var bottom = Math.min(current_image.height, Math.max(0, current_image.height / 2 + ((1 + img_y) / 2) * canvas_main.height / real_scale_));
 
 		var thumb_scale_x = canvas_thumb.width / current_image.width;
 		var thumb_scale_y = canvas_thumb.height / current_image.height;
@@ -255,15 +286,13 @@
 	}
 
 	function updateCanvas() {
-		var real_scale = Math.min(canvas_main.width / current_image.width, canvas_main.height / current_image.height) * img_scale;
-
 		img_x = Math.min(img_scale, img_x);
 		img_y = Math.min(img_scale, img_y);
 		img_x = Math.max(-img_scale, img_x);
 		img_y = Math.max(-img_scale, img_y);
 
-		drawMainImage(real_scale);
-		drawSubImage(real_scale);
+		drawMainImage();
+		drawSubImage();
 	}
 
 	//
@@ -272,13 +301,21 @@
 	function onMouseDown(event) {
 		if (event.button === 2) {
 			clicked = true;
+			$('#canvas-main').css('cursor', 'grab');
 			event.preventDefault();
+		} else if (event.button === 0) {
+			var rect = canvas_main.getBoundingClientRect();
+			var canvas_width = rect.right - rect.left;
+			var canvas_height = rect.bottom - rect.top;
+			var [x, y] = canvasToImage(event.offsetX / canvas_width, event.offsetY / canvas_height);
+			var [x_, y_] = imageToCanvas(x, y);
 		}
 	}
 
 	function onMouseUp(event) {
 		if (event.button === 2) {
 			clicked = false;
+			$('#canvas-main').css('cursor', 'auto');
 			event.preventDefault();
 		}
 	}
@@ -317,6 +354,9 @@
 		if (img_scale < 1) {
 			scale_change /= img_scale;
 			img_scale = 1;
+		} else if (img_scale > 10) {
+			scale_change *= 10 / img_scale;
+			img_scale = 10;
 		}
 		img_x -= x;
 		img_y -= y;
