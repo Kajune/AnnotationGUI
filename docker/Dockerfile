@@ -8,5 +8,4 @@ RUN apt install -y ffmpeg
 
 COPY server/ /var/www/html/
 COPY docker/php.ini /usr/local/etc/php/
-RUN chmod a+rw /var/www/html/projects
-
+RUN mkdir -m a+rw /var/www/html/projects
