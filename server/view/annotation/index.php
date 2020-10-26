@@ -153,7 +153,7 @@
 					<select class="custom-select" size="10" id="category-selection">
 					</select>
 					<hr>
-					<button class="btn btn-sm btn-primary">Add New</button>
+					<button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#add-label-dialog">Add New</button>
 				</div>
 				<div class="col-6">
 					<h6>Attribution</h6>
@@ -170,6 +170,27 @@
 			<div class="modal-footer">
 				<button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="selecting_category=false;">Cancel</button>
 				<button type="button" class="btn btn-primary" onclick="if(selecting_category){addTracklet()}else{assignLabel()}" data-dismiss="modal">OK</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="add-label-dialog" tabindex="-1" role="dialog" aria-labelledby="add-label-dialog" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="add-label-dialog">Add New Category</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+				<span aria-hidden="true">&times;</span></button>
+			</div>
+			<div class="modal-body">
+				<input type="text" class="form-control" placeholder="Supercategory Name" id="supercategory-name">
+				<input type="text" class="form-control" placeholder="New Category Name" id="new-category-name" oninput="checkNewCategoryName();">
+				<small style="color: red;" id="duplicate_error" hidden>Category name already exists.</small>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-primary" id="add-new-category-button" onclick="addNewCategory();" data-dismiss="modal" disabled>OK</button>
 			</div>
 		</div>
 	</div>
@@ -223,6 +244,7 @@
 
 	var next_box_id = 0;
 	var next_tracklet_id = 0;
+	var next_category_id = 0;
 	var tracklet_colors = {};
 	var selected_tracklet = null;
 
@@ -248,11 +270,15 @@
 		// get next id and color
 		if (annotation.annotations.length > 0) {
 			annotation.annotations.forEach(annot => {
-				next_box_id = Math.max(next_box_id, annot['id']+1);
-				next_tracklet_id = Math.max(next_tracklet_id, annot['tracklet_id']+1);
-				tracklet_colors[annot['tracklet_id']] = randColor();
+				next_box_id = Math.max(next_box_id, annot.id+1);
+				next_tracklet_id = Math.max(next_tracklet_id, annot.tracklet_id+1);
+				tracklet_colors[annot.tracklet_id] = randColor();
 			});
 		}
+
+		annotation.categories.forEach(cat => {
+			next_category_id = Math.max(next_category_id, cat.id+1);
+		});
 	}
 
 	function saveAnnotation() {
@@ -309,6 +335,40 @@
 		}
 
 		updateDrawCanvas();
+	}
+
+	function checkNewCategoryName() {
+		for (var i = 0; i < annotation.categories.length; i++) {
+			if (annotation.categories[i].name === $('#new-category-name').val()) {
+				$('#duplicate_error').attr('hidden', false);
+				$('#add-new-category-button').attr('disabled', true);
+				return;
+			}
+		}
+
+		$('#duplicate_error').attr('hidden', true);
+
+		if ($('#new-category-name').val() !== '') {
+			$('#add-new-category-button').attr('disabled', false);			
+		}		
+	}
+
+	function addNewCategory() {
+		annotation.categories.push(
+			{supercategory: $('#supercategory-name').val(),
+			id: next_category_id,
+			name: $('#new-category-name').val()},
+		);
+
+		$('#category-selection').append(
+			$('<option>')
+				.val(next_category_id)
+				.text($('#new-category-name').val())
+				.prop('selected', false));
+
+		next_category_id++;
+
+		$('#new-category-name').val('');
 	}
 
 	//
@@ -440,11 +500,9 @@
 		ctx_draw.textBaseline = 'bottom';
 
 		annotation.annotations.forEach(annot => {
-			if (annot['image_id'] == frame_index - 1) {
-				ctx_draw.strokeStyle = tracklet_colors[annot['tracklet_id']];
-
-				var [x1, y1] = imageToCanvas(annot['bbox'][0], annot['bbox'][1]);
-				var [x2, y2] = imageToCanvas(annot['bbox'][2] + annot['bbox'][0], annot['bbox'][3] + annot['bbox'][1]);
+			if (annot.image_id == frame_index - 1) {
+				var [x1, y1] = imageToCanvas(annot.bbox[0], annot.bbox[1]);
+				var [x2, y2] = imageToCanvas(annot.bbox[2] + annot.bbox[0], annot.bbox[3] + annot.bbox[1]);
 
 				// Omit drawing if out of canvas
 				if ((x1 < 0 && x2 < 0) || (y1 < 0 && y2 < 0) || (1 < x1 && 1 < x2) || (1 < y1 && 1 < y2)) {
@@ -452,8 +510,13 @@
 				}
 
 				// Draw box
+				ctx_draw.strokeStyle = tracklet_colors[annot.tracklet_id];
+				ctx_draw.fillStyle = tracklet_colors[annot.tracklet_id];
+				ctx_draw.globalAlpha = 0.5;
+				ctx_draw.fillRect(x1 * canvas_draw.width, y1 * canvas_draw.height, (x2 - x1) * canvas_draw.width, (y2 - y1) * canvas_draw.height);
+				ctx_draw.globalAlpha = 1.0;
 				ctx_draw.strokeRect(x1 * canvas_draw.width, y1 * canvas_draw.height, (x2 - x1) * canvas_draw.width, (y2 - y1) * canvas_draw.height);
-				if (annot['tracklet_id'] == selected_tracklet) {
+				if (annot.tracklet_id == selected_tracklet) {
 					ctx_draw.strokeRect(x1 * canvas_draw.width - 3, y1 * canvas_draw.height - 3, 
 						(x2 - x1) * canvas_draw.width + 6, (y2 - y1) * canvas_draw.height + 6);
 				}
@@ -464,8 +527,8 @@
 				ctx_draw.fillRect(x1 * canvas_draw.width, y1 * canvas_draw.height, text_width, -text_height);
 				ctx_draw.fillStyle = 'black';
 				for (var i = 0; i < annotation.categories.length; i++) {
-					if (annotation.categories[i]['id'] === annot['category_id']) {
-						ctx_draw.fillText(annotation.categories[i]['name'], x1 * canvas_draw.width + 3, y1 * canvas_draw.height, text_width - 6);
+					if (annotation.categories[i].id === annot.category_id) {
+						ctx_draw.fillText(annotation.categories[i].name, x1 * canvas_draw.width + 3, y1 * canvas_draw.height, text_width - 6);
 						break;
 					}
 				}
@@ -485,8 +548,8 @@
 
 	function updateDrawCanvas() {
 		ctx_draw.clearRect(0, 0, canvas_draw.width, canvas_draw.height);
-		drawTracklets();
 		drawGrid();
+		drawTracklets();
 		drawMakingBox();
 	}
 
@@ -607,17 +670,17 @@
 		for (var i = 0; i < annotation.categories.length; i++) {
 			$('#category-selection').append(
 				$('<option>')
-					.val(annotation.categories[i]['id'])
-					.text(annotation.categories[i]['name'])
+					.val(annotation.categories[i].id)
+					.text(annotation.categories[i].name)
 					.prop('selected', i==0));
 		}
 
 		var template = $('#attribution-template').contents();
 		for (var i = 0; i < annotation.attributes.length; i++) {
 			var clone = template.clone();
-			clone.find('.attr-checkbox').attr('id', 'attr-' + annotation.attributes[i]['id']);
-			clone.find('.attr-label').attr('for', 'attr-' + annotation.attributes[i]['id'])
-				.text(annotation.attributes[i]['name']);
+			clone.find('.attr-checkbox').attr('id', 'attr-' + annotation.attributes[i].id);
+			clone.find('.attr-label').attr('for', 'attr-' + annotation.attributes[i].id)
+				.text(annotation.attributes[i].name);
 			$('#attribution-selection').append(clone);
 		}
 
