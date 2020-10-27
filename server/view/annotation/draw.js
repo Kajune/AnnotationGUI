@@ -12,7 +12,7 @@ function canvasToImage_(x, y, img_x, img_y, canvas, image, scale) {
 	var canvas_offsetX = (canvas.width / rs - image.width) / 2
 	var canvas_offsetY = (canvas.height / rs - image.height) / 2
 
-	var x_ = ((-img_x / 2 + x) * canvas.width) / rs- canvas_offsetX;
+	var x_ = ((-img_x / 2 + x) * canvas.width) / rs - canvas_offsetX;
 	var y_ = ((img_y / 2 + y) * canvas.height) / rs - canvas_offsetY;
 
 	return [x_, y_];
