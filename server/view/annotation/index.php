@@ -544,6 +544,9 @@
 	}
 
 	function checkHover() {
+		if (!annotation) {
+			return;
+		}
 		// Check if mouse hovers on some box
 		// When mouse is hovering on multiple boxes, latest box is choosed
 		for (var i = 0; i < annotation.annotations.length; i++) {

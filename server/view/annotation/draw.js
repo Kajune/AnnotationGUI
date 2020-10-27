@@ -73,10 +73,10 @@ function drawMainImage(canvas, ctx, image, img_x, img_y, rs) {
 }
 
 function drawSubImage(canvas, ctx, image, img_x, img_y, rs) {
-	var left = Math.min(image.width, Math.max(0, image.width / 2 - ((img_x + 1) / 2) * canvas_main.width / rs));
-	var right = Math.min(image.width, Math.max(0, image.width / 2 + ((1 - img_x) / 2) * canvas_main.width / rs));
-	var top = Math.min(image.height, Math.max(0, image.height / 2 - ((1 - img_y) / 2) * canvas_main.height / rs));
-	var bottom = Math.min(image.height, Math.max(0, image.height / 2 + ((1 + img_y) / 2) * canvas_main.height / rs));
+	var left = Math.min(image.width, Math.max(0, image.width / 2 - ((img_x + 1) / 2) * canvas.width / rs));
+	var right = Math.min(image.width, Math.max(0, image.width / 2 + ((1 - img_x) / 2) * canvas.width / rs));
+	var top = Math.min(image.height, Math.max(0, image.height / 2 - ((1 - img_y) / 2) * canvas.height / rs));
+	var bottom = Math.min(image.height, Math.max(0, image.height / 2 + ((1 + img_y) / 2) * canvas.height / rs));
 
 	var thumb_scale_x = canvas.width / image.width;
 	var thumb_scale_y = canvas.height / image.height;
@@ -99,6 +99,7 @@ function drawTracklets(annotation, selected_box, hovered_box,
 
 	var text_width = canvas.width * 0.08;
 	var text_height = canvas.height * 0.025;
+	var cp_radius = canvas.width * 0.003;
 
 	ctx.font = 'bold ' + text_height + 'px sans-serif';
 	ctx.textBaseline = 'bottom';
@@ -124,6 +125,20 @@ function drawTracklets(annotation, selected_box, hovered_box,
 				ctx.strokeRect(x1 * canvas.width - 3, y1 * canvas.height - 3, 
 					(x2 - x1) * canvas.width + 6, (y2 - y1) * canvas.height + 6);
 			}
+
+			// Draw control points
+			var cpList = [[x1, y1], [x1, y2], [x2, y1], [x2, y2], [(x1+x2)/2, y1], [x1, (y1+y2)/2], [(x1+x2)/2, y2], [x2,(y1+y2)/2]];
+			cpList.forEach(cp => {
+				ctx.fillStyle = 'black';
+				ctx.beginPath();
+				ctx.arc(cp[0] * canvas.width, cp[1] * canvas.height, cp_radius, 0, Math.PI*2, false);
+				ctx.fill();
+
+				ctx.fillStyle = tracklet_colors[annot.tracklet_id];
+				ctx.beginPath();
+				ctx.arc(cp[0] * canvas.width, cp[1] * canvas.height, cp_radius * 0.75, 0, Math.PI*2, false);
+				ctx.fill();
+			});
 
 			// Draw text area
 			ctx.strokeRect(x1 * canvas.width, y1 * canvas.height, text_width, -text_height);
