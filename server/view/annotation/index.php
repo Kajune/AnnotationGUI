@@ -37,6 +37,8 @@
 	<script type="text/javascript" src="../../js/bootstrap.bundle.min.js"></script>
 	<link rel="stylesheet" type="text/css" href="../../css/style.css">
 
+	<script type="text/javascript" src="draw.js"></script>
+
 	<script type="text/javascript">
 		var project_name = '<?php echo $project_name; ?>';
 		var project_url = '../../projects/' + project_name + '/';
@@ -184,9 +186,11 @@
 				<span aria-hidden="true">&times;</span></button>
 			</div>
 			<div class="modal-body">
-				<input type="text" class="form-control" placeholder="Supercategory Name" id="supercategory-name">
-				<input type="text" class="form-control" placeholder="New Category Name" id="new-category-name" oninput="checkNewCategoryName();">
-				<small style="color: red;" id="duplicate_error" hidden>Category name already exists.</small>
+				<div class="form-group">
+					<input type="text" class="form-control" placeholder="Supercategory Name" id="supercategory-name"><br>
+					<input type="text" class="form-control" placeholder="New Category Name" id="new-category-name" oninput="checkNewCategoryName();">
+					<small style="color: red;" id="duplicate_error" hidden>Category name already exists.</small>
+				</div>
 			</div>
 			<div class="modal-footer">
 				<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
@@ -246,7 +250,9 @@
 	var next_tracklet_id = 0;
 	var next_category_id = 0;
 	var tracklet_colors = {};
-	var selected_tracklet = null;
+	var selected_box = null;
+	var hovered_box = null;
+	var hover_list = [];
 
 	const current_image = new Image();
 	current_image.onload = () => { updateImageCanvas(); updateDrawCanvas(); };
@@ -254,12 +260,6 @@
 	//
 	// Utility
 	//
-
-	// random color generation function
-	function randColor() {
-		return "rgb(" + (~~(256 * Math.random())) + ", " + (~~(256 * Math.random())) + ", " + (~~(256 * Math.random())) + ")";
-	}
-
 	function loadAnnotation() {
 		$.ajaxSetup({ async: false });
 		$.getJSON(project_url + 'annotation.json', (data) => {
@@ -295,6 +295,8 @@
 	}
 
 	function addTracklet() {
+		selected_box = next_box_id;
+
 		for (var i = frame_index - 1; i < annotation.images.length; i++) {
 			newTracklet = {
 				image_id: i,
@@ -310,7 +312,6 @@
 		}
 
 		tracklet_colors[next_tracklet_id] = randColor();
-		selected_tracklet = next_tracklet_id;
 		next_tracklet_id++;
 		
 		assignLabel();
@@ -318,12 +319,24 @@
 	}
 
 	function assignLabel() {
-		if (selected_tracklet === null) {
+		if (selected_box === null) {
+			return;
+		}
+
+		var selected_tracklet_id = null;
+		for (var i = 0; i < annotation.annotations.length; i++) {
+			if (annotation.annotations[i].id === selected_box) {
+				selected_tracklet_id = annotation.annotations[i].tracklet_id;
+				break;
+			}
+		}
+
+		if (selected_tracklet_id === null) {
 			return;
 		}
 
 		for (var i = 0; i < annotation.annotations.length; i++) {
-			if (annotation.annotations[i].tracklet_id === selected_tracklet) {
+			if (annotation.annotations[i].tracklet_id === selected_tracklet_id) {
 				annotation.annotations[i].category_id = Number($('#category-selection').val());
 
 				for (var j = 0; j < annotation.attributes.length; j++) {
@@ -374,30 +387,21 @@
 	//
 	// Coordinate computation
 	//
+	function mouse_in_rect(x, y, w, h) {
+		var [mx_, my_] = canvasToImage(mx, my);
+		return x <= mx_ && mx_ <= x + w && y <= my_ && my_ <= y + h;
+	}
+
 	function real_scale() {
-		return Math.min(canvas_main.width / current_image.width, canvas_main.height / current_image.height) * img_scale;
+		return real_scale_(canvas_main, current_image, img_scale);
 	}
 
 	function canvasToImage(x, y) {
-		var real_scale_ = real_scale()
-		var canvas_offsetX = (canvas_main.width / real_scale_ - current_image.width) / 2
-		var canvas_offsetY = (canvas_main.height / real_scale_ - current_image.height) / 2
-
-		var x_ = ((-img_x / 2 + x) * canvas_main.width) / real_scale_- canvas_offsetX;
-		var y_ = ((img_y / 2 + y) * canvas_main.height) / real_scale_ - canvas_offsetY;
-
-		return [x_, y_];
+		return canvasToImage_(x, y, img_x, img_y, canvas_main, current_image, img_scale);
 	}
 
 	function imageToCanvas(x, y) {
-		var real_scale_ = real_scale()
-		var canvas_offsetX = (canvas_main.width / real_scale_ - current_image.width) / 2
-		var canvas_offsetY = (canvas_main.height / real_scale_ - current_image.height) / 2
-
-		var x_ = (x + canvas_offsetX) * real_scale_ / canvas_main.width + img_x / 2;
-		var y_ = (y + canvas_offsetY) * real_scale_ / canvas_main.height - img_y / 2;
-
-		return [x_, y_];
+		return imageToCanvas_(x, y, img_x, img_y, canvas_main, current_image, img_scale);
 	}
 
 	//
@@ -413,6 +417,10 @@
 		$('#seekbar').val(frame_index);
 
 		updateScreen();
+
+		hovered_box = null;
+		hover_list = [];
+		selected_box = null;
 	}
 
 	function updateScreen() {
@@ -421,136 +429,24 @@
 		$('#thumb-image').attr('src', current_image.src);
 	}
 
-	function drawMainImage() {
-		var real_scale_ = real_scale()
-		ctx_main.clearRect(0, 0, canvas_main.width, canvas_main.height);
-		ctx_main.scale(real_scale_, real_scale_);
-		ctx_main.translate((canvas_main.width / real_scale_ - current_image.width) / 2, (canvas_main.height / real_scale_ - current_image.height) / 2);
-		ctx_main.translate(img_x * 0.5 * canvas_main.width / real_scale_, -img_y * 0.5 * canvas_main.height / real_scale_);
-		ctx_main.drawImage(current_image, 0, 0);
-		ctx_main.resetTransform();
-		ctx_main.setTransform(1, 0, 0, 1, 0, 0);
-	}
-
-	function drawSubImage() {
-		var real_scale_ = real_scale()
-		var left = Math.min(current_image.width, Math.max(0, current_image.width / 2 - ((img_x + 1) / 2) * canvas_main.width / real_scale_));
-		var right = Math.min(current_image.width, Math.max(0, current_image.width / 2 + ((1 - img_x) / 2) * canvas_main.width / real_scale_));
-		var top = Math.min(current_image.height, Math.max(0, current_image.height / 2 - ((1 - img_y) / 2) * canvas_main.height / real_scale_));
-		var bottom = Math.min(current_image.height, Math.max(0, current_image.height / 2 + ((1 + img_y) / 2) * canvas_main.height / real_scale_));
-
-		var thumb_scale_x = canvas_thumb.width / current_image.width;
-		var thumb_scale_y = canvas_thumb.height / current_image.height;
-
-		ctx_thumb.lineWidth = 2;
-		ctx_thumb.strokeStyle = 'red';
-		ctx_thumb.clearRect(0, 0, canvas_thumb.width, canvas_thumb.height);
-		ctx_thumb.strokeRect(left * thumb_scale_x, top * thumb_scale_y, (right - left) * thumb_scale_x, (bottom - top) * thumb_scale_y);
-		ctx_thumb.resetTransform();
-	}
-
-	function drawGrid() {
-		ctx_draw.strokeStyle = "black";
-		ctx_draw.lineWidth = 2;
-		ctx_draw.beginPath();
-		ctx_draw.setLineDash([15, 5]);
-		ctx_draw.moveTo(0, my * canvas_draw.height);
-		ctx_draw.lineTo(canvas_draw.width, my * canvas_draw.height);
-		ctx_draw.stroke();
-
-		ctx_draw.moveTo(mx * canvas_draw.width, 0);
-		ctx_draw.lineTo(mx * canvas_draw.width, canvas_draw.height);
-		ctx_draw.stroke();
-		ctx_draw.closePath();
-	}
-
-	function drawMakingBox() {
-		if (making_box) {
-			ctx_draw.strokeStyle = "navy";
-			ctx_draw.lineWidth = 3;
-			ctx_draw.setLineDash([]);
-
-			var [x1, y1] = canvasToImage(sx, sy);
-			var [x2, y2] = canvasToImage(mx, my);
-
-			x1 = Math.max(Math.min(x1, current_image.width), 0);
-			x2 = Math.max(Math.min(x2, current_image.width), 0);
-			y1 = Math.max(Math.min(y1, current_image.height), 0);
-			y2 = Math.max(Math.min(y2, current_image.height), 0);
-
-			[x1, y1] = imageToCanvas(x1, y1);
-			[x2, y2] = imageToCanvas(x2, y2);
-
-			ctx_draw.strokeRect(x1 * canvas_draw.width, y1 * canvas_draw.height, (x2 - x1) * canvas_draw.width, (y2 - y1) * canvas_draw.height);			
-		}
-	}
-
-	function drawTracklets() {
-		if (!annotation || annotation.annotations.length <= 0) {
-			return;
-		}
-
-		ctx_draw.lineWidth = 2;
-		ctx_draw.setLineDash([]);
-
-		var text_width = canvas_draw.width * 0.08;
-		var text_height = canvas_draw.height * 0.025;
-
-		ctx_draw.font = 'bold ' + text_height + 'px sans-serif';
-		ctx_draw.textBaseline = 'bottom';
-
-		annotation.annotations.forEach(annot => {
-			if (annot.image_id == frame_index - 1) {
-				var [x1, y1] = imageToCanvas(annot.bbox[0], annot.bbox[1]);
-				var [x2, y2] = imageToCanvas(annot.bbox[2] + annot.bbox[0], annot.bbox[3] + annot.bbox[1]);
-
-				// Omit drawing if out of canvas
-				if ((x1 < 0 && x2 < 0) || (y1 < 0 && y2 < 0) || (1 < x1 && 1 < x2) || (1 < y1 && 1 < y2)) {
-					return;
-				}
-
-				// Draw box
-				ctx_draw.strokeStyle = tracklet_colors[annot.tracklet_id];
-				ctx_draw.fillStyle = tracklet_colors[annot.tracklet_id];
-				ctx_draw.globalAlpha = 0.5;
-				ctx_draw.fillRect(x1 * canvas_draw.width, y1 * canvas_draw.height, (x2 - x1) * canvas_draw.width, (y2 - y1) * canvas_draw.height);
-				ctx_draw.globalAlpha = 1.0;
-				ctx_draw.strokeRect(x1 * canvas_draw.width, y1 * canvas_draw.height, (x2 - x1) * canvas_draw.width, (y2 - y1) * canvas_draw.height);
-				if (annot.tracklet_id == selected_tracklet) {
-					ctx_draw.strokeRect(x1 * canvas_draw.width - 3, y1 * canvas_draw.height - 3, 
-						(x2 - x1) * canvas_draw.width + 6, (y2 - y1) * canvas_draw.height + 6);
-				}
-
-				// Draw text area
-				ctx_draw.strokeRect(x1 * canvas_draw.width, y1 * canvas_draw.height, text_width, -text_height);
-				ctx_draw.fillStyle = 'white';
-				ctx_draw.fillRect(x1 * canvas_draw.width, y1 * canvas_draw.height, text_width, -text_height);
-				ctx_draw.fillStyle = 'black';
-				for (var i = 0; i < annotation.categories.length; i++) {
-					if (annotation.categories[i].id === annot.category_id) {
-						ctx_draw.fillText(annotation.categories[i].name, x1 * canvas_draw.width + 3, y1 * canvas_draw.height, text_width - 6);
-						break;
-					}
-				}
-			}
-		});
-	}
-
 	function updateImageCanvas() {
 		img_x = Math.min(img_scale, img_x);
 		img_y = Math.min(img_scale, img_y);
 		img_x = Math.max(-img_scale, img_x);
 		img_y = Math.max(-img_scale, img_y);
 
-		drawMainImage();
-		drawSubImage();
+		drawMainImage(canvas_main, ctx_main, current_image, img_x, img_y, real_scale());
+		drawSubImage(canvas_thumb, ctx_thumb, current_image, img_x, img_y, real_scale());
 	}
 
 	function updateDrawCanvas() {
 		ctx_draw.clearRect(0, 0, canvas_draw.width, canvas_draw.height);
-		drawGrid();
-		drawTracklets();
-		drawMakingBox();
+		drawGrid(canvas_draw, ctx_draw, mx, my);
+		drawTracklets(annotation, selected_box, hovered_box,
+						 canvas_draw, ctx_draw, current_image, img_x, img_y, img_scale);
+		if (making_box) {
+			drawMakingBox(canvas_draw, ctx_draw, mx, my, img_x, img_y, current_image, img_scale)
+		}
 	}
 
 	//
@@ -559,22 +455,28 @@
 	function onMouseDown(event) {
 		if (event.button === 2) {
 			moving_image = true;
-			$('#canvas-main').css('cursor', 'grab');
+			making_box = false;
+			$('#canvas-draw').css('cursor', 'grab');
 			event.preventDefault();
 		} else if (event.button === 0) {
 			making_box = true;
 			sx = mx;
 			sy = my;
+
+			selected_box = hovered_box;
+			updateDrawCanvas();
 		}
 	}
 
 	function onMouseUp(event) {
 		if (event.button === 2) {
 			moving_image = false;
-			$('#canvas-main').css('cursor', 'auto');
+			$('#canvas-draw').css('cursor', 'auto');
 			event.preventDefault();
 		} else if (event.button === 0) {
 			if (making_box) {
+				making_box = false;
+
 				[x1, y1] = canvasToImage(sx, sy);
 				[x2, y2] = canvasToImage(mx, my);
 
@@ -594,7 +496,6 @@
 					[y1, y2] = [y2, y1];
 				}
 
-				making_box = false;
 				selecting_category = true;
 				$('#label-dialog').modal();
 			}
@@ -615,6 +516,33 @@
 			img_x += (mx - mx_last) * 2;
 			img_y -= (my - my_last) * 2;
 			updateImageCanvas();
+		} else if (moving_box) {
+
+		} else if (resizing_box) {
+
+		} else {
+			// Check if mouse hovers on some box
+			// When mouse is hovering on multiple boxes, latest box is choosed
+			for (var i = 0; i < annotation.annotations.length; i++) {
+				var annot = annotation.annotations[i];
+				if (annot.image_id !== frame_index - 1) {
+					continue;
+				}
+				if (mouse_in_rect(annot.bbox[0], annot.bbox[1], annot.bbox[2], annot.bbox[3])) {
+					if (!hover_list.includes(annot.id)) {
+						hover_list.push(annot.id);
+					}
+				} else {
+					hover_list = hover_list.filter(id => id !== annot.id);
+				}
+			}
+
+			if (hover_list.length === 0) {
+				hovered_box = null;
+			} else {
+				// Latest box
+				hovered_box = hover_list.slice(-1)[0];
+			}
 		}
 
 		updateDrawCanvas();
