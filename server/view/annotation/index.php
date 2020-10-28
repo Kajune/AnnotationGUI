@@ -110,11 +110,11 @@
 				</div>
 			</figure>
 			<div style="padding-top: 5%;">
-				<button class="btn btn-secondary btn-block">Delete track at current frame</button>
-				<button class="btn btn-secondary btn-block">Delete tracks in subsequent frames</button>
-				<button class="btn btn-secondary btn-block">Delete whole tracklet</button>
+				<button class="btn btn-secondary btn-block" id="delete-at-current-frame" disabled onclick="delete_at_current_frame();">Delete track at current frame</button>
+				<button class="btn btn-secondary btn-block" id="delete-in-subsequent-frames" disabled onclick="delete_in_subsequent_frames();">Delete tracks in subsequent frames</button>
+				<button class="btn btn-secondary btn-block" id="delete-whole" disabled data-toggle="modal" data-target="#delete-dialog">Delete whole tracklet</button>
 				<button class="btn btn-secondary btn-block">Link tracklets</button>
-				<button class="btn btn-secondary btn-block">Cut tracklet at current frame</button>
+				<button class="btn btn-secondary btn-block" id="cut-tracklet" disabled onclick="cut_tracklet();">Cut tracklet at current frame</button>
 			</div>
 
 			<div id="test"></div>
@@ -199,6 +199,26 @@
 		</div>
 	</div>
 </div>
+
+<div class="modal fade" id="delete-dialog" tabindex="-1" role="dialog" aria-labelledby="delete-dialog" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="delete-dialog">Delete Whole Tracklet</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+				<span aria-hidden="true">&times;</span></button>
+			</div>
+			<div class="modal-body">
+				Are you sure want to delete the whole tracklet?
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+				<button type="button" class="btn btn-warning" onclick="delete_whole();" data-dismiss="modal">OK</button>
+			</div>
+		</div>
+	</div>
+</div>
+
 
 <script type="text/javascript">
 	var annotation = null;
@@ -291,7 +311,7 @@
 	}
 
 	function addTracklet() {
-		selected_box = next_box_id;
+		setSelectedBox(next_box_id);
 
 		for (var i = frame_index - 1; i < annotation.images.length; i++) {
 			newTracklet = {
@@ -387,6 +407,95 @@
 	}
 
 	//
+	// Button function
+	//
+	function setSelectedBox(new_box) {
+		selected_box = new_box;
+		if (selected_box === null) {
+			$('#delete-at-current-frame').attr('disabled', true);
+			$('#delete-in-subsequent-frames').attr('disabled', true);
+			$('#delete-whole').attr('disabled', true);
+			$('#cut-tracklet').attr('disabled', true);
+		} else {
+			$('#delete-at-current-frame').attr('disabled', false);
+			$('#delete-in-subsequent-frames').attr('disabled', false);
+			$('#delete-whole').attr('disabled', false);
+			$('#cut-tracklet').attr('disabled', false);
+		}
+	}
+
+	function delete_at_current_frame() {
+		if (selected_box === null) {
+			return;
+		}
+
+		annotation.annotations = annotation.annotations.filter(annot => annot.id !== selected_box);
+		setSelectedBox(null);
+		updateDrawCanvas();
+	}
+
+	function delete_in_subsequent_frames() {
+		if (selected_box === null) {
+			return;
+		}
+
+		var tracklet_id = null;
+		annotation.annotations.forEach(function(annot){
+			if (annot.id === selected_box) {
+				tracklet_id = annot.tracklet_id;
+			}
+		});
+
+		annotation.annotations = annotation.annotations.filter(function(annot){
+			return !(annot.tracklet_id === tracklet_id && annot.image_id >= annotation.images[frame_index-1].id);
+		});
+		setSelectedBox(null);
+		updateDrawCanvas();		
+	}
+
+	function delete_whole() {
+		if (selected_box === null) {
+			return;
+		}
+
+		var tracklet_id = null;
+		annotation.annotations.forEach(function(annot){
+			if (annot.id === selected_box) {
+				tracklet_id = annot.tracklet_id;
+			}
+		});
+
+		annotation.annotations = annotation.annotations.filter(annot => annot.tracklet_id !== tracklet_id);
+		setSelectedBox(null);
+		updateDrawCanvas();		
+	}
+
+	function cut_tracklet() {
+		if (selected_box === null) {
+			return;
+		}
+
+		var tracklet_id = null;
+		annotation.annotations.forEach(function(annot){
+			if (annot.id === selected_box) {
+				tracklet_id = annot.tracklet_id;
+			}
+		});
+
+		annotation.annotations.forEach(function(annot) {
+			if (annot.tracklet_id === tracklet_id && annot.image_id >= annotation.images[frame_index-1].id) {
+				annot.tracklet_id = next_tracklet_id;
+			}
+		});
+
+		tracklet_colors[next_tracklet_id] = randColor();
+		next_tracklet_id++;
+
+		setSelectedBox(null);
+		updateDrawCanvas();		
+	}
+
+	//
 	// Coordinate computation
 	//
 	function mouse_in_rect(x, y, w, h) {
@@ -422,7 +531,7 @@
 
 		hovered_box = null;
 		hover_list = [];
-		selected_box = null;
+		setSelectedBox(null);
 	}
 
 	function updateScreen() {
@@ -594,7 +703,7 @@
 		// When mouse is hovering on multiple boxes, latest box is choosed
 		for (var i = 0; i < annotation.annotations.length; i++) {
 			var annot = annotation.annotations[i];
-			if (annot.image_id !== frame_index - 1) {
+			if (annot.image_id !== annotation.images[frame_index - 1].id) {
 				continue;
 			}
 			if (mouse_in_rect(annot.bbox[0], annot.bbox[1], annot.bbox[2], annot.bbox[3])) {
@@ -621,7 +730,7 @@
 		var closest_cp = null;
 		for (var i = 0; i < annotation.annotations.length; i++) {
 			var annot = annotation.annotations[i];
-			if (annot.image_id !== frame_index - 1) {
+			if (annot.image_id !== annotation.images[frame_index - 1].id) {
 				continue;
 			}
 			
@@ -657,7 +766,7 @@
 			initializeMousePosition(event);
 		}
 		if (event.button === 0) {
-			selected_box = hovered_box;
+			setSelectedBox(hovered_box);
 			if (hovered_cp !== null && !forceImageMove) {
 				beginResizeBox();
 			} else if (selected_box !== null && !forceImageMove) {
@@ -807,6 +916,8 @@
 				updateFrameIndex(frame_index - 1);
 			} else if (event.key == 'ArrowRight' || event.key == 'd') {
 				updateFrameIndex(frame_index + 1);			
+			} else if (event.key == 'Delete') {
+				delete_at_current_frame();
 			}
 
 			if (event.shiftKey) {
