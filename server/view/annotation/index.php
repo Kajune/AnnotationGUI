@@ -141,12 +141,12 @@
 </div>
 
 <!-- Dialogue -->
-<div class="modal fade" id="label-dialog" tabindex="-1" role="dialog" aria-labelledby="label-dialog" aria-hidden="true">
+<div class="modal" id="label-dialog" tabindex="-1" role="dialog" aria-labelledby="label-dialog" aria-hidden="true">
 	<div class="modal-dialog" role="document">
 		<div class="modal-content">
 			<div class="modal-header">
 				<h5 class="modal-title" id="label-dialog">Category and Attribution</h5>
-				<button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="endSelectCategory();">
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close" onclick="selecting_new_category = false;">
 				<span aria-hidden="true">&times;</span></button>
 			</div>
 			<div class="modal-body row">
@@ -170,8 +170,8 @@
 				</div>
 			</div>
 			<div class="modal-footer">
-				<button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="endSelectCategory();">Cancel</button>
-				<button type="button" class="btn btn-primary" onclick="if(selecting_category){addTracklet()}else{assignLabel()}" data-dismiss="modal">OK</button>
+				<button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="selecting_new_category = false;">Cancel</button>
+				<button type="button" class="btn btn-primary" onclick="if(selecting_new_category){addTracklet()}else{assignLabel()}" data-dismiss="modal">OK</button>
 			</div>
 		</div>
 	</div>
@@ -217,12 +217,6 @@
 	canvas_draw.width = window.innerWidth * anti_alias;
 	canvas_draw.height = window.innerHeight * anti_alias;
 
-	canvas_draw.addEventListener('mousewheel', onMouseWheel, false);
-	canvas_draw.addEventListener('wheel', onMouseWheel, false);
-	canvas_draw.addEventListener('mousedown', onMouseDown, false);
-	document.addEventListener('mouseup', onMouseUp, false);
-	document.addEventListener('mousemove', onMouseMove, false);
-
 	$(window).resize(function () { 
 		canvas_main.width = window.innerWidth * anti_alias;
 		canvas_main.height = window.innerHeight * anti_alias;
@@ -238,7 +232,7 @@
 
 	var moving_image = false;
 	var making_box = false;
-	var selecting_category = false;
+	var selecting_new_category = false;
 	var moving_box = false;
 	var resizing_box = false;
 	var forceImageMove = false;
@@ -254,6 +248,7 @@
 	var selected_box = null;
 	var hovered_box = null;
 	var hover_list = [];
+	var hovered_cp = null;
 
 	const current_image = new Image();
 	current_image.onload = () => { updateImageCanvas(); updateDrawCanvas(); };
@@ -302,7 +297,7 @@
 			newTracklet = {
 				image_id: i,
 				bbox: [x1, y1, x2-x1, y2-y1],
-				category_id: 3,
+				category_id: 0,
 				tracklet_id: next_tracklet_id,
 				id: next_box_id,
 				attribution: [],
@@ -316,7 +311,7 @@
 		next_tracklet_id++;
 		
 		assignLabel();
-		selecting_category = false;
+		selecting_new_category = false;
 	}
 
 	function assignLabel() {
@@ -336,10 +331,16 @@
 			return;
 		}
 
+		// As for category, whole tracklet categories are updated.
+		// On the other hand, attribution is assigned image by image, except when making new tracklet.
 		for (var i = 0; i < annotation.annotations.length; i++) {
 			if (annotation.annotations[i].tracklet_id === selected_tracklet_id) {
 				annotation.annotations[i].category_id = Number($('#category-selection').val());
+			}
 
+			if ((selecting_new_category && annotation.annotations[i].tracklet_id === selected_tracklet_id) ||
+				(!selecting_new_category &&  annotation.annotations[i].id === selected_box)) {
+				annotation.annotations[i].attribution = [];
 				for (var j = 0; j < annotation.attributes.length; j++) {
 					if ($('#attr-' + annotation.attributes[j].id).prop('checked')) {
 						annotation.annotations[i].attribution.push(annotation.attributes[j].id);
@@ -409,7 +410,7 @@
 	// Drawing
 	//
 	function updateFrameIndex(new_index) {
-		if (($("#label-dialog").data('bs.modal') || {})._isShown || making_box || selecting_category) {
+		if (($("#label-dialog").data('bs.modal') || {})._isShown || making_box || selecting_new_category) {
 			return;
 		}
 		frame_index = Math.max(Math.min(new_index, annotation.images.length), 1);
@@ -437,13 +438,13 @@
 		img_y = Math.max(-img_scale, img_y);
 
 		drawMainImage(canvas_main, ctx_main, current_image, img_x, img_y, real_scale());
-		drawSubImage(canvas_thumb, ctx_thumb, current_image, img_x, img_y, real_scale());
+		drawSubImage(canvas_thumb, canvas_main, ctx_thumb, current_image, img_x, img_y, real_scale());
 	}
 
 	function updateDrawCanvas() {
 		ctx_draw.clearRect(0, 0, canvas_draw.width, canvas_draw.height);
 		drawGrid(canvas_draw, ctx_draw, mx, my);
-		drawTracklets(annotation, selected_box, hovered_box,
+		drawTracklets(annotation, selected_box, hovered_box, hovered_cp,
 						 canvas_draw, ctx_draw, current_image, img_x, img_y, img_scale);
 		if (making_box) {
 			drawMakingBox(canvas_draw, ctx_draw, mx, my, img_x, img_y, current_image, img_scale)
@@ -503,16 +504,8 @@
 			[y1, y2] = [y2, y1];
 		}
 
-		beginSelectCategory();
-	}
-
-	function beginSelectCategory() {
-		selecting_category = true;
-		$('#label-dialog').modal();		
-	}
-
-	function endSelectCategory() {
-		selecting_category = false;
+		selecting_new_category = true;
+		$('#label-dialog').modal();
 	}
 
 	function beginMoveBox() {
@@ -521,6 +514,14 @@
 
 	function endMoveBox() {
 		moving_box = false;
+	}
+
+	function beginResizeBox() {
+		resizing_box = true;
+	}
+
+	function endResizeBox() {
+		resizing_box = false;
 	}
 
 	function moveImage(mx, my, mx_last, my_last) {
@@ -543,10 +544,52 @@
 		updateDrawCanvas();
 	}
 
+	function resizeBox(mx, my, mx_last, my_last) {
+		for (var i = 0; i < annotation.annotations.length; i++) {
+			var annot = annotation.annotations[i];
+			if (annot.id === selected_box) {
+				var [vx1, vy1] = canvasToImage(mx_last, my_last);
+				var [vx2, vy2] = canvasToImage(mx, my);
+
+				var [bx1, by1, bx2, by2] = [annot.bbox[0], annot.bbox[1], annot.bbox[0] + annot.bbox[2], annot.bbox[1] + annot.bbox[3]];
+				if (hovered_cp == 0) {
+					bx1 += vx2 - vx1;
+					by1 += vy2 - vy1;
+				} else if (hovered_cp == 1) {
+					bx2 += vx2 - vx1;
+					by1 += vy2 - vy1;					
+				} else if (hovered_cp == 2) {
+					bx1 += vx2 - vx1;
+					by2 += vy2 - vy1;					
+				} else if (hovered_cp == 3) {
+					bx2 += vx2 - vx1;
+					by2 += vy2 - vy1;
+				} else if (hovered_cp == 4) {
+					by1 += vy2 - vy1;					
+				} else if (hovered_cp == 5) {
+					bx1 += vx2 - vx1;					
+				} else if (hovered_cp == 6) {
+					by2 += vy2 - vy1;					
+				} else if (hovered_cp == 7) {
+					bx2 += vx2 - vx1;					
+				}
+
+				annot.bbox[0] = Math.min(bx1, bx2);
+				annot.bbox[1] = Math.min(by1, by2);
+				annot.bbox[2] = Math.abs(bx2 - bx1);
+				annot.bbox[3] = Math.abs(by2 - by1);
+
+				annot.manual = true;
+			}
+		}
+		updateDrawCanvas();
+	}
+
 	function checkHover() {
 		if (!annotation) {
 			return;
 		}
+
 		// Check if mouse hovers on some box
 		// When mouse is hovering on multiple boxes, latest box is choosed
 		for (var i = 0; i < annotation.annotations.length; i++) {
@@ -565,9 +608,44 @@
 
 		if (hover_list.length === 0) {
 			hovered_box = null;
+			$('#canvas-draw').css('cursor', 'auto');
 		} else {
 			// Latest box
 			hovered_box = hover_list.slice(-1)[0];
+			$('#canvas-draw').css('cursor', 'move');
+		}
+
+		// If mouse is closer to control points than specifc threshold, hovered_box will be overriden.
+		var min_d = 0.03;
+		var closest_box = null;
+		var closest_cp = null;
+		for (var i = 0; i < annotation.annotations.length; i++) {
+			var annot = annotation.annotations[i];
+			if (annot.image_id !== frame_index - 1) {
+				continue;
+			}
+			
+			var [x1, y1] = imageToCanvas(annot.bbox[0], annot.bbox[1]);
+			var [x2, y2] = imageToCanvas(annot.bbox[2] + annot.bbox[0], annot.bbox[3] + annot.bbox[1]);
+			var cpList = [[x1, y1], [x2, y1], [x1, y2], [x2, y2], [(x1+x2)/2, y1], [x1, (y1+y2)/2], [(x1+x2)/2, y2], [x2,(y1+y2)/2]];
+
+			for (var j = 0; j < cpList.length; j++) {
+				var d = Math.sqrt((cpList[j][0] - mx) ** 2 + (cpList[j][1] - my) ** 2);
+				if (d < min_d) {
+					min_d = d;
+					closest_box = annot.id;
+					closest_cp = j;
+				}
+			}
+		}
+
+		if (closest_box != null && closest_cp != null) {
+			hovered_box = closest_box;
+			hovered_cp = closest_cp;
+			var resize_cursors = ['nw-resize', 'ne-resize', 'sw-resize', 'se-resize', 'n-resize', 'w-resize', 's-resize', 'e-resize'];
+			$('#canvas-draw').css('cursor', resize_cursors[hovered_cp]);
+		} else {
+			hovered_cp = null;
 		}
 	}
 
@@ -580,7 +658,9 @@
 		}
 		if (event.button === 0) {
 			selected_box = hovered_box;
-			if (selected_box !== null && !forceImageMove) {
+			if (hovered_cp !== null && !forceImageMove) {
+				beginResizeBox();
+			} else if (selected_box !== null && !forceImageMove) {
 				beginMoveBox();
 			} else {
 				beginMoveImage();
@@ -596,6 +676,9 @@
 		if (event.button === 0) {
 			if (moving_image) {
 				endMoveImage();
+			}
+			if (resizing_box) {
+				endResizeBox();
 			}
 			if (moving_box) {
 				endMoveBox();
@@ -623,7 +706,7 @@
 		} else if (moving_box) {
 			moveBox(mx, my, mx_last, my_last);
 		} else if (resizing_box) {
-
+			resizeBox(mx, my, mx_last, my_last);
 		} else {
 			checkHover();
 		}
@@ -670,6 +753,28 @@
 		event.preventDefault();
 	}
 
+	function onDblClick(event) {
+		if (selected_box !== null) {
+			var selected_category = null;
+			var selected_attr = null;
+			for (var i = 0; i < annotation.annotations.length; i++) {
+				if (annotation.annotations[i].id == selected_box) {
+					selected_category = annotation.annotations[i].category_id;
+					selected_attr = annotation.annotations[i].attribution;
+				}
+			}
+
+			$('#category-selection').find('option').each(function(i, option) {
+				$(option).prop('selected', $(option).val() == selected_category);
+			});
+
+			$('#attribution-selection').find('.attr-checkbox').each(function(i, attr) {
+				$(attr).prop('checked', selected_attr.includes(Number(attr.id.replace('attr-', ''))));
+			})
+			$('#label-dialog').modal();
+		}
+	}
+
 	$(document).ready(function() {
 		loadAnnotation();
 
@@ -714,6 +819,13 @@
 				forceImageMove = false;
 			}
 		});
+
+		canvas_draw.addEventListener('mousewheel', onMouseWheel, false);
+		canvas_draw.addEventListener('wheel', onMouseWheel, false);
+		canvas_draw.addEventListener('mousedown', onMouseDown, false);
+		canvas_draw.addEventListener('dblclick', onDblClick, false);
+		document.addEventListener('mouseup', onMouseUp, false);
+		document.addEventListener('mousemove', onMouseMove, false);
 	});
 </script>
 </body>
