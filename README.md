@@ -1,7 +1,6 @@
-# AnnotationGUI
-Super sophisticated annotation GUI
+# Super Sophisticated Annotation GUI
+An annotation tool for Object Detection, Multi Object Tracking, Re-Identification...
 
-## Abstract
 ![screenshot](https://user-images.githubusercontent.com/14792604/97583380-3a17dd80-1a3a-11eb-8783-18cba0a445c3.png)
 
 ## Features
@@ -9,6 +8,16 @@ Super sophisticated annotation GUI
 - Tracklet annotation (for Re-ID)
 - Extended MS-COCO format annotation output
 - Automatic tracklet prediction in subsequent frames (and easy to replace with your tracking algorithm)
+
+## How to use
+Try following commands.
+```
+git clone https://github.com/Kajune/AnnotationGUI
+cd AnnotationGUI
+./scripts/build_docker.sh
+./scripts/start_docker.sh
+```
+Then, access localhost:8686 (or specify IP address and Port as you like).
 
 ## Dependencies
 - JQuery
