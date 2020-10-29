@@ -143,7 +143,7 @@
 				var progress = 0;
 				project_data[pname].annotations.forEach(function(annot) {
 					if (annot.manual) {
-						progress = Math.max(progress, annot.image_id);
+						progress = Math.max(progress, annot.image_id+1);
 					}
 				});
 				clone.find('.annotation-progress').text(progress + '/' + project_data[pname].images.length);
