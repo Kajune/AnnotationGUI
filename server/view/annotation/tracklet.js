@@ -320,7 +320,7 @@ function predict_next_frame() {
 	data = {
 		'project_url': project_url,
 		'image1': annotation.images[frame_index-1].file_name,
-		'image2': annotation.images[frame_index-1].file_name,
+		'image2': annotation.images[frame_index].file_name,
 		'bbox': bbox,
 	};
 
