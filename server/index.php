@@ -140,6 +140,12 @@
 
 			clone.find('.video-filename').text(project_data[pname].info.video);
 			if (project_data[pname].annotations !== undefined && project_data[pname].images !== undefined) {
+				var progress = 0;
+				project_data[pname].annotations.forEach(function(annot) {
+					if (annot.manual) {
+						progress = Math.max(progress, annot.image_id);
+					}
+				});
 				clone.find('.annotation-progress').text(project_data[pname].annotations.length + '/' + project_data[pname].images.length);
 			} else {
 				clone.find('.annotation-progress').text('Preparing');
