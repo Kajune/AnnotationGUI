@@ -146,7 +146,7 @@
 						progress = Math.max(progress, annot.image_id);
 					}
 				});
-				clone.find('.annotation-progress').text(project_data[pname].annotations.length + '/' + project_data[pname].images.length);
+				clone.find('.annotation-progress').text(progress + '/' + project_data[pname].images.length);
 			} else {
 				clone.find('.annotation-progress').text('Preparing');
 			}
