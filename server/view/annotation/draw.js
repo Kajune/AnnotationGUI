@@ -127,27 +127,29 @@ function drawTracklets(annotation, selected_box, hovered_box, hovered_cp,
 			}
 
 			// Draw control points
-			var cpList = [[x1, y1], [x2, y1], [x1, y2], [x2, y2], [(x1+x2)/2, y1], [x1, (y1+y2)/2], [(x1+x2)/2, y2], [x2,(y1+y2)/2]];
-			for (var j = 0; j < cpList.length; j++) {
-				ctx.beginPath();
-				if (j == hovered_cp && annot.id == hovered_box) {
-					ctx.fillStyle = 'white';
-					ctx.arc(cpList[j][0] * canvas.width, cpList[j][1] * canvas.height, cp_radius * 2, 0, Math.PI*2, false);
-				} else {
-					ctx.fillStyle = 'black';
-					ctx.arc(cpList[j][0] * canvas.width, cpList[j][1] * canvas.height, cp_radius, 0, Math.PI*2, false);
-				}
-				ctx.fill();
+			if (annot.id == selected_box || annot.id == hovered_box) {
+				var cpList = [[x1, y1], [x2, y1], [x1, y2], [x2, y2], [(x1+x2)/2, y1], [x1, (y1+y2)/2], [(x1+x2)/2, y2], [x2,(y1+y2)/2]];
+				for (var j = 0; j < cpList.length; j++) {
+					ctx.beginPath();
+					if (j == hovered_cp && annot.id == hovered_box) {
+						ctx.fillStyle = 'white';
+						ctx.arc(cpList[j][0] * canvas.width, cpList[j][1] * canvas.height, cp_radius * 2, 0, Math.PI*2, false);
+					} else {
+						ctx.fillStyle = 'black';
+						ctx.arc(cpList[j][0] * canvas.width, cpList[j][1] * canvas.height, cp_radius, 0, Math.PI*2, false);
+					}
+					ctx.fill();
 
-				ctx.fillStyle = tracklet_colors[annot.tracklet_id];
-				ctx.beginPath();
-				if (j == hovered_cp && annot.id == hovered_box) {
-					ctx.arc(cpList[j][0] * canvas.width, cpList[j][1] * canvas.height, cp_radius * 1.5, 0, Math.PI*2, false);
-				} else {
-					ctx.arc(cpList[j][0] * canvas.width, cpList[j][1] * canvas.height, cp_radius * 0.75, 0, Math.PI*2, false);					
-				}
-				ctx.fill();
-			};
+					ctx.fillStyle = tracklet_colors[annot.tracklet_id];
+					ctx.beginPath();
+					if (j == hovered_cp && annot.id == hovered_box) {
+						ctx.arc(cpList[j][0] * canvas.width, cpList[j][1] * canvas.height, cp_radius * 1.5, 0, Math.PI*2, false);
+					} else {
+						ctx.arc(cpList[j][0] * canvas.width, cpList[j][1] * canvas.height, cp_radius * 0.75, 0, Math.PI*2, false);					
+					}
+					ctx.fill();
+				};
+			}
 
 			// Draw text area
 			ctx.strokeRect(x1 * canvas.width, y1 * canvas.height, text_width, -text_height);

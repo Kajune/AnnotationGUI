@@ -96,7 +96,8 @@
 	<span class="navbar-text ml-auto" style="margin-right: 1%;">
 		<small>Annotation results are automatically saved.</small>
 	</span>
-	<a type="button" class="btn btn-secondary btn-sm" href="../../">Back to Menu</a>
+	<button type="button" class="btn btn-secondary btn-sm" data-toggle="modal" data-target="#shortcut-dialog">?</button>
+	<a type="button" class="btn btn-secondary btn-sm" href="../../" style="margin-left: 1%;">Back to Menu</a>
 </nav>
 
 <div class="container-fluid main" style="width: 100%; height: 95%;">
@@ -113,8 +114,10 @@
 				<button class="btn btn-secondary btn-block" id="delete-at-current-frame" disabled onclick="delete_at_current_frame();">Delete track at current frame</button>
 				<button class="btn btn-secondary btn-block" id="delete-in-subsequent-frames" disabled onclick="delete_in_subsequent_frames();">Delete tracks in subsequent frames</button>
 				<button class="btn btn-secondary btn-block" id="delete-whole" disabled data-toggle="modal" data-target="#delete-dialog">Delete whole tracklet</button>
-				<button class="btn btn-secondary btn-block">Link tracklets</button>
+				<button class="btn btn-secondary btn-block" onclick="begin_link_tracklet();" id="link-tracklet" disabled>Link tracklets</button>
+				<button class="btn btn-primary btn-block" onclick="end_link_tracklet();" hidden id="end-link-tracklet">End Link tracklets</button>
 				<button class="btn btn-secondary btn-block" id="cut-tracklet" disabled onclick="cut_tracklet();">Cut tracklet at current frame</button>
+				<button class="btn btn-secondary btn-block" onclick="predict_next_frame();">Predict Next Frame</button>
 			</div>
 
 			<div id="test"></div>
@@ -219,6 +222,20 @@
 	</div>
 </div>
 
+<div class="modal fade" id="shortcut-dialog" tabindex="-1" role="dialog" aria-labelledby="shortcut-dialog" aria-hidden="true">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title" id="shortcut-dialog">Shortcuts</h5>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+				<span aria-hidden="true">&times;</span></button>
+			</div>
+			<div class="modal-body">
+				Shortcuts
+			</div>
+		</div>
+	</div>
+</div>
 
 <script type="text/javascript">
 	var annotation = null;
@@ -256,6 +273,7 @@
 	var moving_box = false;
 	var resizing_box = false;
 	var forceImageMove = false;
+	var tracklet_linking = false;
 
 	var mx = null, my = null;
 	var sx = null, sy = null;
@@ -269,6 +287,8 @@
 	var hovered_box = null;
 	var hover_list = [];
 	var hovered_cp = null;
+	var linking_box = null;
+	var no_link_cands = [];
 
 	const current_image = new Image();
 	current_image.onload = () => { updateImageCanvas(); updateDrawCanvas(); };
@@ -310,6 +330,15 @@
 		});
 	}
 
+	function findTracklet(id) {
+		for (var i = 0; i < annotation.annotations.length; i++) {
+			if (id === annotation.annotations[i].id) {
+				return annotation.annotations[i];
+			}
+		}
+		return null;
+	}
+
 	function addTracklet() {
 		setSelectedBox(next_box_id);
 
@@ -339,26 +368,19 @@
 			return;
 		}
 
-		var selected_tracklet_id = null;
-		for (var i = 0; i < annotation.annotations.length; i++) {
-			if (annotation.annotations[i].id === selected_box) {
-				selected_tracklet_id = annotation.annotations[i].tracklet_id;
-				break;
-			}
-		}
-
-		if (selected_tracklet_id === null) {
+		var sb = findTracklet(selected_box);
+		if (sb === null) {
 			return;
 		}
 
 		// As for category, whole tracklet categories are updated.
 		// On the other hand, attribution is assigned image by image, except when making new tracklet.
 		for (var i = 0; i < annotation.annotations.length; i++) {
-			if (annotation.annotations[i].tracklet_id === selected_tracklet_id) {
+			if (annotation.annotations[i].tracklet_id === sb.tracklet_id) {
 				annotation.annotations[i].category_id = Number($('#category-selection').val());
 			}
 
-			if ((selecting_new_category && annotation.annotations[i].tracklet_id === selected_tracklet_id) ||
+			if ((selecting_new_category && annotation.annotations[i].tracklet_id === sb.id) ||
 				(!selecting_new_category &&  annotation.annotations[i].id === selected_box)) {
 				annotation.annotations[i].attribution = [];
 				for (var j = 0; j < annotation.attributes.length; j++) {
@@ -415,11 +437,13 @@
 			$('#delete-at-current-frame').attr('disabled', true);
 			$('#delete-in-subsequent-frames').attr('disabled', true);
 			$('#delete-whole').attr('disabled', true);
+			$('#link-tracklet').attr('disabled', true);
 			$('#cut-tracklet').attr('disabled', true);
 		} else {
 			$('#delete-at-current-frame').attr('disabled', false);
 			$('#delete-in-subsequent-frames').attr('disabled', false);
 			$('#delete-whole').attr('disabled', false);
+			$('#link-tracklet').attr('disabled', false);
 			$('#cut-tracklet').attr('disabled', false);
 		}
 	}
@@ -439,15 +463,10 @@
 			return;
 		}
 
-		var tracklet_id = null;
-		annotation.annotations.forEach(function(annot){
-			if (annot.id === selected_box) {
-				tracklet_id = annot.tracklet_id;
-			}
-		});
+		var sb = findTracklet(selected_box);
 
 		annotation.annotations = annotation.annotations.filter(function(annot){
-			return !(annot.tracklet_id === tracklet_id && annot.image_id >= annotation.images[frame_index-1].id);
+			return !(annot.tracklet_id === sb.tracklet_id && annot.image_id >= annotation.images[frame_index-1].id);
 		});
 		setSelectedBox(null);
 		updateDrawCanvas();		
@@ -458,14 +477,9 @@
 			return;
 		}
 
-		var tracklet_id = null;
-		annotation.annotations.forEach(function(annot){
-			if (annot.id === selected_box) {
-				tracklet_id = annot.tracklet_id;
-			}
-		});
+		var sb = findTracklet(selected_box);
 
-		annotation.annotations = annotation.annotations.filter(annot => annot.tracklet_id !== tracklet_id);
+		annotation.annotations = annotation.annotations.filter(annot => annot.tracklet_id !== sb.tracklet_id);
 		setSelectedBox(null);
 		updateDrawCanvas();		
 	}
@@ -475,15 +489,11 @@
 			return;
 		}
 
-		var tracklet_id = null;
-		annotation.annotations.forEach(function(annot){
-			if (annot.id === selected_box) {
-				tracklet_id = annot.tracklet_id;
-			}
-		});
+		var sb = findTracklet(selected_box);
+		var sb_tracklet_id = sb.tracklet_id;
 
 		annotation.annotations.forEach(function(annot) {
-			if (annot.tracklet_id === tracklet_id && annot.image_id >= annotation.images[frame_index-1].id) {
+			if (annot.tracklet_id === sb_tracklet_id && annot.image_id >= annotation.images[frame_index-1].id) {
 				annot.tracklet_id = next_tracklet_id;
 			}
 		});
@@ -493,6 +503,32 @@
 
 		setSelectedBox(null);
 		updateDrawCanvas();		
+	}
+
+	function begin_link_tracklet() {
+		tracklet_linking = true;
+		linking_box = selected_box;
+		$('#end-link-tracklet').attr('hidden', false);
+		var sb = findTracklet(selected_box);
+		var images_with_sb = [];
+		annotation.annotations.forEach(function(annot){
+			if (annot.tracklet_id === sb.tracklet_id) {
+				images_with_sb.push(annot.image_id);
+			}
+		});
+
+		annotation.annotations.forEach(function(annot){
+			if (images_with_sb.includes(annot.image_id) && !no_link_cands.includes(annot.tracklet_id)) {
+				no_link_cands.push(annot.tracklet_id);
+			}
+		});
+	}
+
+	function end_link_tracklet() {
+		tracklet_linking = false;
+		linking_box = null;
+		$('#end-link-tracklet').attr('hidden', true);
+		no_link_cands = [];
 	}
 
 	//
@@ -694,6 +730,21 @@
 		updateDrawCanvas();
 	}
 
+	function linkBox(hovered_box) {
+		if (linking_box === null) {
+			return;
+		}
+		var sb = findTracklet(linking_box);
+		var hb = findTracklet(hovered_box);
+		var hb_tracklet_id = hb.tracklet_id;
+
+		annotation.annotations.forEach(function(annot){
+			if (annot.tracklet_id === hb_tracklet_id && !no_link_cands.includes(annot.tracklet_id)) {
+				annot.tracklet_id = sb.tracklet_id;
+			}
+		});
+	}
+
 	function checkHover() {
 		if (!annotation) {
 			return;
@@ -766,13 +817,17 @@
 			initializeMousePosition(event);
 		}
 		if (event.button === 0) {
-			setSelectedBox(hovered_box);
-			if (hovered_cp !== null && !forceImageMove) {
-				beginResizeBox();
-			} else if (selected_box !== null && !forceImageMove) {
-				beginMoveBox();
+			if (tracklet_linking) {
+				linkBox(hovered_box);
 			} else {
-				beginMoveImage();
+				setSelectedBox(hovered_box);
+				if (hovered_cp !== null && !forceImageMove) {
+					beginResizeBox();
+				} else if (selected_box !== null && !forceImageMove) {
+					beginMoveBox();
+				} else {
+					beginMoveImage();
+				}
 			}
 			updateDrawCanvas();
 		} else if (event.button === 2) {
@@ -863,6 +918,9 @@
 	}
 
 	function onDblClick(event) {
+		if (tracklet_linking) {
+			return;
+		}
 		if (selected_box !== null) {
 			var selected_category = null;
 			var selected_attr = null;
