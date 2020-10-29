@@ -38,6 +38,7 @@
 	<link rel="stylesheet" type="text/css" href="../../css/style.css">
 
 	<script type="text/javascript" src="draw.js"></script>
+	<script type="text/javascript" src="tracklet.js"></script>
 
 	<script type="text/javascript">
 		var project_name = '<?php echo $project_name; ?>';
@@ -117,7 +118,7 @@
 				<button class="btn btn-secondary btn-block" onclick="begin_link_tracklet();" id="link-tracklet" disabled>Link tracklets</button>
 				<button class="btn btn-primary btn-block" onclick="end_link_tracklet();" hidden id="end-link-tracklet">End Link tracklets</button>
 				<button class="btn btn-secondary btn-block" id="cut-tracklet" disabled onclick="cut_tracklet();">Cut tracklet at current frame</button>
-				<button class="btn btn-secondary btn-block" onclick="predict_next_frame();">Predict Next Frame</button>
+				<button class="btn btn-secondary btn-block" onclick="predict_next_frame();" id="predict-next-frame">Predict Next Frame</button>
 			</div>
 
 			<div id="test"></div>
@@ -231,14 +232,17 @@
 				<span aria-hidden="true">&times;</span></button>
 			</div>
 			<div class="modal-body">
-				Shortcuts
+				<ul style="text-align:left">
+					<li><b>Arrow or W/S</b>: Move frames</li>
+					<li><b>Delete</b>: Delete track at current frame</li>
+					<li><b>Ctrl+Z</b>: Undo</li>
+				</ul>
 			</div>
 		</div>
 	</div>
 </div>
 
 <script type="text/javascript">
-	var annotation = null;
 	var frame_index = 1;
 
 	const anti_alias = 1;
@@ -279,120 +283,8 @@
 	var sx = null, sy = null;
 	var x1 = null, y1 = null, x2 = null, y2 = null;
 
-	var next_box_id = 0;
-	var next_tracklet_id = 0;
-	var next_category_id = 0;
-	var tracklet_colors = {};
-	var selected_box = null;
-	var hovered_box = null;
-	var hover_list = [];
-	var hovered_cp = null;
-	var linking_box = null;
-	var no_link_cands = [];
-
 	const current_image = new Image();
 	current_image.onload = () => { updateImageCanvas(); updateDrawCanvas(); };
-
-	//
-	// Utility
-	//
-	function loadAnnotation() {
-		$.ajaxSetup({ async: false });
-		$.getJSON(project_url + 'annotation.json', (data) => {
-			annotation = data;
-		});
-		$.ajaxSetup({ async: true });
-
-		// get next id and color
-		if (annotation.annotations.length > 0) {
-			annotation.annotations.forEach(annot => {
-				next_box_id = Math.max(next_box_id, annot.id+1);
-				next_tracklet_id = Math.max(next_tracklet_id, annot.tracklet_id+1);
-				tracklet_colors[annot.tracklet_id] = randColor();
-			});
-		}
-
-		annotation.categories.forEach(cat => {
-			next_category_id = Math.max(next_category_id, cat.id+1);
-		});
-	}
-
-	function saveAnnotation() {
-		var data = { 'name': project_name, 
-			'annotation': JSON.stringify(annotation, null, '  '),
-		};
-
-		$.ajax({
-			type: "POST",
-			url: './uploadAnnotation.php',
-			dataType: 'json',
-			data: data,
-		});
-	}
-
-	function findTracklet(id) {
-		for (var i = 0; i < annotation.annotations.length; i++) {
-			if (id === annotation.annotations[i].id) {
-				return annotation.annotations[i];
-			}
-		}
-		return null;
-	}
-
-	function addTracklet() {
-		setSelectedBox(next_box_id);
-
-		for (var i = frame_index - 1; i < annotation.images.length; i++) {
-			newTracklet = {
-				image_id: i,
-				bbox: [x1, y1, x2-x1, y2-y1],
-				category_id: 0,
-				tracklet_id: next_tracklet_id,
-				id: next_box_id,
-				attribution: [],
-				manual: i == frame_index - 1,
-			};
-			next_box_id++;
-			annotation.annotations.push(newTracklet);
-		}
-
-		tracklet_colors[next_tracklet_id] = randColor();
-		next_tracklet_id++;
-		
-		assignLabel();
-		selecting_new_category = false;
-	}
-
-	function assignLabel() {
-		if (selected_box === null) {
-			return;
-		}
-
-		var sb = findTracklet(selected_box);
-		if (sb === null) {
-			return;
-		}
-
-		// As for category, whole tracklet categories are updated.
-		// On the other hand, attribution is assigned image by image, except when making new tracklet.
-		for (var i = 0; i < annotation.annotations.length; i++) {
-			if (annotation.annotations[i].tracklet_id === sb.tracklet_id) {
-				annotation.annotations[i].category_id = Number($('#category-selection').val());
-			}
-
-			if ((selecting_new_category && annotation.annotations[i].tracklet_id === sb.id) ||
-				(!selecting_new_category &&  annotation.annotations[i].id === selected_box)) {
-				annotation.annotations[i].attribution = [];
-				for (var j = 0; j < annotation.attributes.length; j++) {
-					if ($('#attr-' + annotation.attributes[j].id).prop('checked')) {
-						annotation.annotations[i].attribution.push(annotation.attributes[j].id);
-					}
-				}
-			}
-		}
-
-		updateDrawCanvas();
-	}
 
 	function checkNewCategoryName() {
 		for (var i = 0; i < annotation.categories.length; i++) {
@@ -446,89 +338,6 @@
 			$('#link-tracklet').attr('disabled', false);
 			$('#cut-tracklet').attr('disabled', false);
 		}
-	}
-
-	function delete_at_current_frame() {
-		if (selected_box === null) {
-			return;
-		}
-
-		annotation.annotations = annotation.annotations.filter(annot => annot.id !== selected_box);
-		setSelectedBox(null);
-		updateDrawCanvas();
-	}
-
-	function delete_in_subsequent_frames() {
-		if (selected_box === null) {
-			return;
-		}
-
-		var sb = findTracklet(selected_box);
-
-		annotation.annotations = annotation.annotations.filter(function(annot){
-			return !(annot.tracklet_id === sb.tracklet_id && annot.image_id >= annotation.images[frame_index-1].id);
-		});
-		setSelectedBox(null);
-		updateDrawCanvas();		
-	}
-
-	function delete_whole() {
-		if (selected_box === null) {
-			return;
-		}
-
-		var sb = findTracklet(selected_box);
-
-		annotation.annotations = annotation.annotations.filter(annot => annot.tracklet_id !== sb.tracklet_id);
-		setSelectedBox(null);
-		updateDrawCanvas();		
-	}
-
-	function cut_tracklet() {
-		if (selected_box === null) {
-			return;
-		}
-
-		var sb = findTracklet(selected_box);
-		var sb_tracklet_id = sb.tracklet_id;
-
-		annotation.annotations.forEach(function(annot) {
-			if (annot.tracklet_id === sb_tracklet_id && annot.image_id >= annotation.images[frame_index-1].id) {
-				annot.tracklet_id = next_tracklet_id;
-			}
-		});
-
-		tracklet_colors[next_tracklet_id] = randColor();
-		next_tracklet_id++;
-
-		setSelectedBox(null);
-		updateDrawCanvas();		
-	}
-
-	function begin_link_tracklet() {
-		tracklet_linking = true;
-		linking_box = selected_box;
-		$('#end-link-tracklet').attr('hidden', false);
-		var sb = findTracklet(selected_box);
-		var images_with_sb = [];
-		annotation.annotations.forEach(function(annot){
-			if (annot.tracklet_id === sb.tracklet_id) {
-				images_with_sb.push(annot.image_id);
-			}
-		});
-
-		annotation.annotations.forEach(function(annot){
-			if (images_with_sb.includes(annot.image_id) && !no_link_cands.includes(annot.tracklet_id)) {
-				no_link_cands.push(annot.tracklet_id);
-			}
-		});
-	}
-
-	function end_link_tracklet() {
-		tracklet_linking = false;
-		linking_box = null;
-		$('#end-link-tracklet').attr('hidden', true);
-		no_link_cands = [];
 	}
 
 	//
@@ -589,7 +398,7 @@
 	function updateDrawCanvas() {
 		ctx_draw.clearRect(0, 0, canvas_draw.width, canvas_draw.height);
 		drawGrid(canvas_draw, ctx_draw, mx, my);
-		drawTracklets(annotation, selected_box, hovered_box, hovered_cp,
+		drawTracklets(annotation, selected_box, hovered_box, hovered_cp, no_link_cands,
 						 canvas_draw, ctx_draw, current_image, img_x, img_y, img_scale);
 		if (making_box) {
 			drawMakingBox(canvas_draw, ctx_draw, mx, my, img_x, img_y, current_image, img_scale)
@@ -659,6 +468,7 @@
 
 	function endMoveBox() {
 		moving_box = false;
+		updateAnnotation();
 	}
 
 	function beginResizeBox() {
@@ -667,82 +477,13 @@
 
 	function endResizeBox() {
 		resizing_box = false;
+		updateAnnotation();
 	}
 
 	function moveImage(mx, my, mx_last, my_last) {
 		img_x += (mx - mx_last) * 2;
 		img_y -= (my - my_last) * 2;
 		updateImageCanvas();
-	}
-
-	function moveBox(mx, my, mx_last, my_last) {
-		for (var i = 0; i < annotation.annotations.length; i++) {
-			var annot = annotation.annotations[i];
-			if (annot.id === selected_box) {
-				var [vx1, vy1] = canvasToImage(mx_last, my_last);
-				var [vx2, vy2] = canvasToImage(mx, my);
-				annot.bbox[0] += vx2 - vx1;
-				annot.bbox[1] += vy2 - vy1;
-				annot.manual = true;
-			}
-		}
-		updateDrawCanvas();
-	}
-
-	function resizeBox(mx, my, mx_last, my_last) {
-		for (var i = 0; i < annotation.annotations.length; i++) {
-			var annot = annotation.annotations[i];
-			if (annot.id === selected_box) {
-				var [vx1, vy1] = canvasToImage(mx_last, my_last);
-				var [vx2, vy2] = canvasToImage(mx, my);
-
-				var [bx1, by1, bx2, by2] = [annot.bbox[0], annot.bbox[1], annot.bbox[0] + annot.bbox[2], annot.bbox[1] + annot.bbox[3]];
-				if (hovered_cp == 0) {
-					bx1 += vx2 - vx1;
-					by1 += vy2 - vy1;
-				} else if (hovered_cp == 1) {
-					bx2 += vx2 - vx1;
-					by1 += vy2 - vy1;					
-				} else if (hovered_cp == 2) {
-					bx1 += vx2 - vx1;
-					by2 += vy2 - vy1;					
-				} else if (hovered_cp == 3) {
-					bx2 += vx2 - vx1;
-					by2 += vy2 - vy1;
-				} else if (hovered_cp == 4) {
-					by1 += vy2 - vy1;					
-				} else if (hovered_cp == 5) {
-					bx1 += vx2 - vx1;					
-				} else if (hovered_cp == 6) {
-					by2 += vy2 - vy1;					
-				} else if (hovered_cp == 7) {
-					bx2 += vx2 - vx1;					
-				}
-
-				annot.bbox[0] = Math.min(bx1, bx2);
-				annot.bbox[1] = Math.min(by1, by2);
-				annot.bbox[2] = Math.abs(bx2 - bx1);
-				annot.bbox[3] = Math.abs(by2 - by1);
-
-				annot.manual = true;
-			}
-		}
-		updateDrawCanvas();
-	}
-
-	function linkBox(hovered_box) {
-		if (linking_box === null) {
-			return;
-		}
-		var sb = findTracklet(linking_box);
-		var hb = findTracklet(hovered_box);
-		var hb_tracklet_id = hb.tracklet_id;
-
-		annotation.annotations.forEach(function(annot){
-			if (annot.tracklet_id === hb_tracklet_id && !no_link_cands.includes(annot.tracklet_id)) {
-				annot.tracklet_id = sb.tracklet_id;
-			}
-		});
 	}
 
 	function checkHover() {
@@ -967,7 +708,7 @@
 			$('#attribution-selection').append(clone);
 		}
 
-		updateFrameIndex(annotation.annotations.length + 1);
+		updateFrameIndex(1);
 
 		document.addEventListener('keydown', (event) => {
 			if (event.key == 'ArrowLeft' || event.key == 'a') {
@@ -976,6 +717,8 @@
 				updateFrameIndex(frame_index + 1);			
 			} else if (event.key == 'Delete') {
 				delete_at_current_frame();
+			} else if (event.key == 'z' && event.ctrlKey) {
+				undoAnnotation();
 			}
 
 			if (event.shiftKey) {

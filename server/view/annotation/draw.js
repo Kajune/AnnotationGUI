@@ -88,7 +88,7 @@ function drawSubImage(canvas, canvas_main, ctx, image, img_x, img_y, rs) {
 	ctx.resetTransform();
 }
 
-function drawTracklets(annotation, selected_box, hovered_box, hovered_cp,
+function drawTracklets(annotation, selected_box, hovered_box, hovered_cp, no_link_list,
 						 canvas, ctx, image, img_x, img_y, scale) {
 	if (!annotation || annotation.annotations.length <= 0) {
 		return;
@@ -114,12 +114,20 @@ function drawTracklets(annotation, selected_box, hovered_box, hovered_cp,
 				return;
 			}
 
+			if (no_link_list.includes(annot.tracklet_id)) {
+				ctx.globalAlpha = 0.25;
+			}
+
 			// Draw box
 			ctx.strokeStyle = tracklet_colors[annot.tracklet_id];
 			ctx.fillStyle = tracklet_colors[annot.tracklet_id];
-			ctx.globalAlpha = annot.id == selected_box || annot.id == hovered_box ? 0.5 : 0.25;
+			if (!no_link_list.includes(annot.tracklet_id)) {
+				ctx.globalAlpha = annot.id == selected_box || annot.id == hovered_box ? 0.5 : 0.25;
+			}
 			ctx.fillRect(x1 * canvas.width, y1 * canvas.height, (x2 - x1) * canvas.width, (y2 - y1) * canvas.height);
-			ctx.globalAlpha = 1.0;
+			if (!no_link_list.includes(annot.tracklet_id)) {
+				ctx.globalAlpha = 1.0;
+			}
 			ctx.strokeRect(x1 * canvas.width, y1 * canvas.height, (x2 - x1) * canvas.width, (y2 - y1) * canvas.height);
 			if (annot.id == selected_box) {
 				ctx.strokeRect(x1 * canvas.width - 3, y1 * canvas.height - 3, 
@@ -162,6 +170,8 @@ function drawTracklets(annotation, selected_box, hovered_box, hovered_cp,
 					break;
 				}
 			}
+
+			ctx.globalAlpha = 1.0;
 		}
 	});
 }
