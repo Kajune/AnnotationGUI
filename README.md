@@ -8,6 +8,7 @@ An annotation tool for Object Detection, Multi Object Tracking, Re-Identificatio
 - Tracklet annotation (for Re-ID)
 - Extended MS-COCO format annotation output
 - Automatic tracklet prediction in subsequent frames (and easy to replace with your tracking algorithm)
+- Server-Client system for co-operation
 
 ## How to use
 Try following commands.
