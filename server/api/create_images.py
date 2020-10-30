@@ -11,7 +11,10 @@ new_video_location = os.path.join(project_dir, project_name, video_name)
 
 cmd = 'ffprobe -v error -show_entries stream=width,height -of csv=p=0:s=x %s' % new_video_location
 output = subprocess.run([cmd], encoding='ascii', stdout=subprocess.PIPE, shell=True).stdout
-width, height = output.replace('\n', '').split('x')
+if '\n' in output:
+	width, height = output.split('\n')[0].split('x')
+else:
+	width, height = output.split('x')
 os.system('ffmpeg -i %s -vcodec mjpeg -r %f %s' % 
 	(new_video_location, annotation_fps, os.path.join(project_dir, project_name, 'images', '%06d.jpg')))
 
