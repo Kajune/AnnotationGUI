@@ -64,7 +64,16 @@
 			<div class="card h-100">
 				<video src="" class="card-img-top project-thumbnail text-center" style="max-width: 30vw; height: auto; margin-left: auto; margin-right: auto;" controls></video>
 				<div class="card-body">
-					<h5 class="card-title project-name">Project Name</h5>
+					<h5 class="card-title">
+						<span class="project-name" onclick="startEditProjectName(event);">Project Name</span>
+						<div class="input-group project-name-input" hidden>
+							<input type="text" class="form-control" oninput="checkProjectName(event);">
+							<div class="input-group-append">
+								<button class="btn btn-primary" onclick="endEditProjectName(event);">OK</button>
+							</div>
+						</div>
+						<small style="color: red;" class="duplicate_error" hidden>Name already exists.</small>
+					</h5>
 					<div class="row">
 						<a href="" type="button" class="btn btn-block btn-primary go-annotation" style="width:100%;">Go Annotation</a>
 						<a href="" type="button" class="btn btn-block btn-secondary download-annotation" style="width:60%;" download="">Download</a>
@@ -117,6 +126,55 @@
 		});
 	});
 
+	function checkProjectNameValidity(name, target) {
+		for (let pname in project_data) {
+			if (pname === name) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	function startEditProjectName(e) {
+		var editTarget = $(e.target).parent();
+		editTarget.find('.project-name').attr('hidden', true);
+		editTarget.find('.project-name-input').attr('hidden', false);
+		editTarget.find('.project-name-input').find('input').val(editTarget.find('.project-name').text());
+	}
+
+	function checkProjectName(e) {
+		var editTarget = $(e.target).parent().parent();
+		var new_pname = editTarget.find('input').val();
+		var isAvailableName = checkProjectNameValidity(new_pname) || new_pname === editTarget.find('.project-name').text();
+		editTarget.find('.duplicate_error').attr('hidden', isAvailableName);
+		editTarget.find('button').attr('disabled', !isAvailableName);
+	}
+
+	function endEditProjectName(e) {
+		var editTarget = $(e.target).parent().parent().parent();
+		editTarget.find('.project-name').attr('hidden', false);
+		editTarget.find('.project-name-input').attr('hidden', true);
+		editTarget.find('.duplicate_error').attr('hidden', true);
+
+		var new_pname = editTarget.find('input').val();
+		if (new_pname !== editTarget.find('.project-name').text() && checkProjectNameValidity(new_pname)) {	
+			var data = { 
+				'name': editTarget.find('.project-name').text(), 
+				'new_name': new_pname,
+			};
+
+			$.ajax({
+				type: "POST",
+				url: './api/updateProjectName.php',
+				dataType: 'json',
+				data: data,
+			}).done(function(data){
+				location.reload(true);		
+			});
+		}
+	}
+
 	function updateItems() {
 		var template = $('#card-template');
 
@@ -130,6 +188,7 @@
 
 			clone.find('.project-thumbnail').attr('src', 'projects/' + pname + '/' + project_data[pname].info.video);
 			clone.find('.project-name').text(pname);
+			clone.find('.project-name-input').val(pname);
 
 			clone.find('.go-annotation').attr('href', "./view/annotation?name=" + pname);
 

@@ -17,7 +17,8 @@ var no_link_cands = [];
 //
 function loadAnnotation() {
 	$.ajaxSetup({ async: false });
-	$.getJSON(project_url + 'annotation.json', (data) => {
+	// attach timestamp to prevent read cache
+	$.getJSON(project_url + 'annotation.json' + '&timestamp=' + now.getTime(), (data) => {
 		annotation = data;
 	});
 	$.ajaxSetup({ async: true });
