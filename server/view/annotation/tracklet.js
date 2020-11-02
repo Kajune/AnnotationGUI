@@ -18,10 +18,14 @@ var no_link_cands = [];
 function loadAnnotation() {
 	$.ajaxSetup({ async: false });
 	// attach timestamp to prevent read cache
-	$.getJSON(project_url + 'annotation.json' + '&timestamp=' + now.getTime(), (data) => {
+	$.getJSON(project_url + 'annotation.json' + '?timestamp=' + Date.now(), (data) => {
 		annotation = data;
 	});
 	$.ajaxSetup({ async: true });
+
+	if (annotation === null || annotation.annotations === undefined || annotation.images === undefined) {
+		return false;
+	}
 
 	// get next id and color
 	if (annotation.annotations.length > 0) {
@@ -37,6 +41,8 @@ function loadAnnotation() {
 	});
 
 	memento.push(JSON.parse(JSON.stringify(annotation.annotations)));
+
+	return true;
 }
 
 function saveAnnotation() {

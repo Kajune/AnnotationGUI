@@ -16,6 +16,9 @@
 	$project_update = array();
 	foreach ($project_names as $name) {
 		$json = file_get_contents($project_dir.$name.'/annotation.json');
+		if (!$json) {
+			continue;
+		}
 		$project_data[$name] = json_decode($json);
 		$project_update[$name] = date("Y/m/d H:i:s.", filemtime($project_dir.$name.'/annotation.json'));
 	}

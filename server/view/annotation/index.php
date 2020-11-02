@@ -684,7 +684,10 @@
 	}
 
 	$(document).ready(function() {
-		loadAnnotation();
+		if (!loadAnnotation()) {
+			// Still preparing images
+			location.href = '../../';
+		}
 
 		console.log(annotation);
 
