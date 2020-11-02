@@ -310,8 +310,12 @@ function resizeBox(mx, my, mx_last, my_last) {
 	updateDrawCanvas();
 }
 
-function predict_next_frame() {
-	if (annotation.images.length === frame_index) {
+function auto_predict() {
+	$('#predict-next-frame').attr('disabled', $('#auto-predict').prop('checked'));
+}
+
+function predict_next_frame(current_frame_index) {
+	if (annotation.images.length === current_frame_index) {
 		return;
 	}
 	$('#predict-next-frame').attr('disabled', true);
@@ -319,15 +323,15 @@ function predict_next_frame() {
 
 	var bbox = [];
 	annotation.annotations.forEach(function(annot){
-		if (annot.image_id === frame_index - 1) {
+		if (annot.image_id === current_frame_index - 1) {
 			bbox.push([annot.tracklet_id, annot.bbox[0], annot.bbox[1], annot.bbox[2], annot.bbox[3]]);
 		}
 	});
 
 	data = {
 		'project_url': project_url,
-		'image1': annotation.images[frame_index-1].file_name,
-		'image2': annotation.images[frame_index].file_name,
+		'image1': annotation.images[current_frame_index-1].file_name,
+		'image2': annotation.images[current_frame_index].file_name,
 		'bbox': bbox,
 	};
 
@@ -343,7 +347,7 @@ function predict_next_frame() {
 			var [x, y, w, h] = [Number(bb[1]), Number(bb[2]), Number(bb[3]), Number(bb[4])];
 
 			annotation.annotations.forEach(function(annot){
-				if (annot.image_id === frame_index && annot.tracklet_id === tracklet_id && !annot.manual) {
+				if (annot.image_id === current_frame_index && annot.tracklet_id === tracklet_id && !annot.manual) {
 					annot.bbox = [x, y, w, h];
 				}
 			});
@@ -353,7 +357,7 @@ function predict_next_frame() {
 		alert('Next Frame Prediction failed for some reason. Please check log.');
 		console.log(data);
 	}).always(function() {
-		$('#predict-next-frame').attr('disabled', false);
+		$('#predict-next-frame').attr('disabled', $('#auto-predict').prop('checked'));
 		$('#predict-next-frame').text('Predict Next Frame');
 	});
 }

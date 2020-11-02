@@ -101,8 +101,8 @@
 	<a type="button" class="btn btn-secondary btn-sm" href="../../" style="margin-left: 1%;">Back to Menu</a>
 </nav>
 
-<div class="container-fluid main" style="width: 100%; height: 95%;">
-	<div class="row" style="height: 100%; padding: 1%; padding-top: 0;">
+<div class="container-fluid" style="width: 100%; height: 95%;">
+	<div class="row" style="height: 100%; padding: 1%;">
 		<!-- Left Pane -->
 		<div style="width:20%; padding-right: 1%; height: 100%;">
 			<figure class="figure d-none d-sm-block">
@@ -118,7 +118,11 @@
 				<button class="btn btn-secondary btn-block" onclick="begin_link_tracklet();" id="link-tracklet" disabled>Link tracklets</button>
 				<button class="btn btn-primary btn-block" onclick="end_link_tracklet();" hidden id="end-link-tracklet">End Link tracklets</button>
 				<button class="btn btn-secondary btn-block" id="cut-tracklet" disabled onclick="cut_tracklet();">Cut tracklet at current frame</button>
-				<button class="btn btn-secondary btn-block" onclick="predict_next_frame();" id="predict-next-frame">Predict Next Frame</button>
+				<button class="btn btn-secondary btn-block" onclick="predict_next_frame(frame_index);" id="predict-next-frame">Predict Next Frame</button>
+				<div class="custom-control custom-switch">
+					<input type="checkbox" class="custom-control-input" id="auto-predict" onchange="auto_predict();">
+					<label class="custom-control-label" for="auto-predict" title="Automatically run next frame prediction when image is changed.">Auto Predict</label>
+				</div>
 			</div>
 
 			<div id="test"></div>
@@ -367,6 +371,12 @@
 		if (($("#label-dialog").data('bs.modal') || {})._isShown || making_box || selecting_new_category) {
 			return;
 		}
+
+		if ($('#auto-predict').prop('checked')) {
+			// If auto predict is enabled, predict next frame
+			predict_next_frame(frame_index);
+		}
+
 		frame_index = Math.max(Math.min(new_index, annotation.images.length), 1);
 
 		$('#current-frame-index').val(frame_index);

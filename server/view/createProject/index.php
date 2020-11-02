@@ -165,6 +165,7 @@
 	var existing_names = <?php echo json_encode($enames); ?>;
 
 	function selectVideo(e) {
+		/*
 		var reader = new FileReader();
 		var filename = sanitaize.encode(e.target.files[0].name.split('.').slice(0, -1).join('.'));
 		reader.onload = function (e) {
@@ -174,7 +175,14 @@
 			}
 			checkInputs();
 		}
-		reader.readAsDataURL(e.target.files[0]);
+		reader.readAsDataURL(e.target.files[0]);*/
+
+		var filename = sanitaize.encode(e.target.files[0].name.split('.').slice(0, -1).join('.'));
+		$('#video-preview').attr('src', URL.createObjectURL(event.target.files[0]));
+		if (!$('#project-name').val()) {
+			$('#project-name').val(filename);
+		}
+		checkInputs();
 	}
 
 	var jsonData = null;
