@@ -478,6 +478,7 @@
 
 	function endMoveBox() {
 		moving_box = false;
+		propagateTracklet(selected_box);
 		updateAnnotation();
 	}
 
@@ -487,6 +488,7 @@
 
 	function endResizeBox() {
 		resizing_box = false;
+		propagateTracklet(selected_box);
 		updateAnnotation();
 	}
 
@@ -569,7 +571,11 @@
 		}
 		if (event.button === 0) {
 			if (tracklet_linking) {
-				linkBox(hovered_box);
+				if (hovered_box !== null) {
+					linkBox(hovered_box);
+				} else {
+					beginMoveImage();
+				}
 			} else {
 				setSelectedBox(hovered_box);
 				if (hovered_cp !== null && !forceImageMove) {
