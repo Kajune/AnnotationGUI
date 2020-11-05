@@ -343,7 +343,7 @@ function propagateTracklet(selected_box) {
 			break;
 		}
 
-		next_annot.bbox = sb.bbox;
+		next_annot.bbox = JSON.parse(JSON.stringify(sb.bbox));
 		next_annot.category_id = sb.category_id;
 		next_annot.attribution = sb.attribution;
 	}
@@ -412,6 +412,8 @@ function predict_next_frame(current_frame_index) {
 			annotation.annotations.forEach(function(annot){
 				if (annot.image_id === current_frame_index && annot.tracklet_id === tracklet_id && !annot.manual) {
 					annot.bbox = [x, y, w, h];
+					annot.bbox[0] = Math.max(Math.min(annot.bbox[0], current_image.width - annot.bbox[2]), 0);
+					annot.bbox[1] = Math.max(Math.min(annot.bbox[1], current_image.height - annot.bbox[3]), 0);
 					annot.manual = true;
 				}
 			});

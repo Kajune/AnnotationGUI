@@ -657,6 +657,8 @@
 		if (img_scale < 1) {
 			scale_change /= img_scale;
 			img_scale = 1;
+			img_x = 0;
+			img_y = 0;
 		} else if (img_scale > 10) {
 			scale_change *= 10 / img_scale;
 			img_scale = 10;
