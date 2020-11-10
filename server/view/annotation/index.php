@@ -528,6 +528,11 @@
 			$('#canvas-draw').css('cursor', 'move');
 		}
 
+		if (hovered_box != null) {
+			hovered_cp = null;
+			return;
+		}
+
 		// If mouse is closer to control points than specifc threshold, hovered_box will be overriden.
 		var min_d = 0.03;
 		var closest_box = null;
