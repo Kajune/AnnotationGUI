@@ -65,7 +65,10 @@
 	<template id="card-template">
 		<div class="col mb-4">
 			<div class="card h-100">
+				<!--
 				<video src="" class="card-img-top project-thumbnail text-center" style="max-width: 30vw; height: auto; margin-left: auto; margin-right: auto;" controls></video>
+				-->
+				<img src="" class="card-img-top project-thumbnail text-center" style="max-width: 30vw; height: auto; margin-left: auto; margin-right: auto;" controls></img>
 				<div class="card-body">
 					<h5 class="card-title">
 						<span class="project-name" onclick="startEditProjectName(event);">Project Name</span>
@@ -189,7 +192,7 @@
 			}
 			var clone = template.clone().contents();
 
-			clone.find('.project-thumbnail').attr('src', 'projects/' + pname + '/' + project_data[pname].info.video);
+			clone.find('.project-thumbnail').attr('src', 'projects/' + project_data[pname].images[0].coco_url);
 			clone.find('.project-name').text(pname);
 			clone.find('.project-name-input').val(pname);
 

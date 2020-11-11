@@ -528,13 +528,8 @@
 			$('#canvas-draw').css('cursor', 'move');
 		}
 
-		if (hovered_box != null) {
-			hovered_cp = null;
-			return;
-		}
-
 		// If mouse is closer to control points than specifc threshold, hovered_box will be overriden.
-		var min_d = 0.03;
+		var min_d = hovered_box != null ? 0.01 : 0.03;
 		var closest_box = null;
 		var closest_cp = null;
 		for (var i = 0; i < annotation.annotations.length; i++) {
@@ -704,6 +699,7 @@
 			})
 			$('#label-dialog').modal();
 		}
+		event.preventDefault();
 	}
 
 	$(document).ready(function() {
