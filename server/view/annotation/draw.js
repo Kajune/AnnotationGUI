@@ -97,8 +97,8 @@ function drawTracklets(annotation, selected_box, hovered_box, hovered_cp, no_lin
 	ctx.lineWidth = 2;
 	ctx.setLineDash([]);
 
-	var text_width = canvas.width * 0.08;
-	var text_height = canvas.height * 0.025;
+	var text_width = canvas.width * 0.06;
+	var text_height = canvas.height * 0.02;
 	var cp_radius = canvas.width * 0.003;
 
 	ctx.font = 'bold ' + text_height + 'px sans-serif';

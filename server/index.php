@@ -192,7 +192,12 @@
 			}
 			var clone = template.clone().contents();
 
-			clone.find('.project-thumbnail').attr('src', 'projects/' + project_data[pname].images[0].coco_url);
+			// if annotation json is not initialized, this file will be created.
+			var thumb_path = pname + '/images/000000.jpg';
+			if (project_data[pname].images !== undefined) {
+				thumb_path = project_data[pname].images[0].coco_url;
+			}
+			clone.find('.project-thumbnail').attr('src', 'projects/' + thumb_path);
 			clone.find('.project-name').text(pname);
 			clone.find('.project-name-input').val(pname);
 
