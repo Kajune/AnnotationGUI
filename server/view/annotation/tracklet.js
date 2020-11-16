@@ -61,7 +61,7 @@ function saveAnnotation() {
 }
 
 function updateAnnotation() {
-	memento.push(JSON.parse(JSON.stringify(annotation.annotations)));
+	memento.push(JSON.stringify(annotation.annotations));
 	saveAnnotation();
 }
 
@@ -70,7 +70,7 @@ function undoAnnotation() {
 		return;
 	}
 	memento.pop();
-	annotation.annotations = memento.slice(-1)[0];
+	annotation.annotations = JSON.parse(memento.slice(-1)[0]);
 	updateDrawCanvas();
 	saveAnnotation();
 }
@@ -271,7 +271,6 @@ function moveBox(mx, my, mx_last, my_last) {
 			annot.manual = true;
 		}
 	}
-	updateDrawCanvas();
 }
 
 function resizeBox(mx, my, mx_last, my_last) {
@@ -317,7 +316,6 @@ function resizeBox(mx, my, mx_last, my_last) {
 			annot.manual = true;
 		}
 	}
-	updateDrawCanvas();
 }
 
 // Inherit box coordinate and category in current frame to following frames until manual=True

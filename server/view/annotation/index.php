@@ -760,6 +760,11 @@
 		canvas_draw.addEventListener('dblclick', onDblClick, false);
 		document.addEventListener('mouseup', onMouseUp, false);
 		document.addEventListener('mousemove', onMouseMove, false);
+
+		// Preload images to cache
+		annotation.images.forEach(img =>
+			$("<img>").attr("src", project_url + 'images/' + img.file_name)
+		);
 	});
 </script>
 </body>
