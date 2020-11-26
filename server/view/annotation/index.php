@@ -85,6 +85,27 @@
 			background: gray;
 			cursor: pointer;
 		}
+
+		.button-text {
+			width: 100%;
+			height: 100%;
+			padding: 2.5%;
+		}
+
+		.attr-tooltips {
+			display: block;
+			position: absolute;
+			z-index: 9999;
+			width: auto;
+			height: auto;
+			padding: 0.3em 0.5em;
+			color: black;
+			font-family: sans-serif;
+			font-weight: bold;
+			font-size: 0.5em;
+			background: white;
+			border-radius: 0.1em;
+		}
 	</style>
 </head>
 <body oncontextmenu="return false;">
@@ -112,13 +133,20 @@
 				</div>
 			</figure>
 			<div style="padding-top: 5%;">
-				<button class="btn btn-secondary btn-block" id="delete-at-current-frame" disabled onclick="delete_at_current_frame();">Delete track at current frame</button>
-				<button class="btn btn-secondary btn-block" id="delete-in-subsequent-frames" disabled onclick="delete_in_subsequent_frames();">Delete tracks in subsequent frames</button>
-				<button class="btn btn-secondary btn-block" id="delete-whole" disabled data-toggle="modal" data-target="#delete-dialog">Delete whole tracklet</button>
-				<button class="btn btn-secondary btn-block" onclick="begin_link_tracklet();" id="link-tracklet" disabled>Link tracklets</button>
-				<button class="btn btn-primary btn-block" onclick="end_link_tracklet();" hidden id="end-link-tracklet">End Link tracklets</button>
-				<button class="btn btn-secondary btn-block" id="cut-tracklet" disabled onclick="cut_tracklet();">Cut tracklet at current frame</button>
-				<button class="btn btn-secondary btn-block" onclick="predict_next_frame(frame_index);" id="predict-next-frame">Predict Next Frame</button>
+				<button class="btn btn-secondary btn-block" id="delete-at-current-frame" disabled onclick="delete_at_current_frame();" style="padding: 0px;">
+					<div class="button-text">Delete track at current frame</div></button>
+				<button class="btn btn-secondary btn-block" id="delete-in-subsequent-frames" disabled onclick="delete_in_subsequent_frames();" style="padding: 0px;">
+					<div class="button-text">Delete tracks in subsequent frames</div></button>
+				<button class="btn btn-secondary btn-block" id="delete-whole" disabled data-toggle="modal" data-target="#delete-dialog" style="padding: 0px;">
+					<div class="button-text">Delete whole tracklet</div></button>
+				<button class="btn btn-secondary btn-block" onclick="begin_link_tracklet();" id="link-tracklet" disabled style="padding: 0px;">
+					<div class="button-text">Link tracklets</div></button>
+				<button class="btn btn-primary btn-block" onclick="end_link_tracklet();" hidden id="end-link-tracklet" style="padding: 0px;">
+					<div class="button-text">End Link tracklets</div></button>
+				<button class="btn btn-secondary btn-block" id="cut-tracklet" disabled onclick="cut_tracklet();" style="padding: 0px;">
+					<div class="button-text">Cut tracklet at current frame</div></button>
+				<button class="btn btn-secondary btn-block" onclick="predict_next_frame(frame_index);" id="predict-next-frame" style="padding: 0px;">
+					<div class="button-text">Predict Next Frame</div></button>
 				<div class="custom-control custom-switch">
 					<input type="checkbox" class="custom-control-input" id="auto-predict" onchange="auto_predict();">
 					<label class="custom-control-label" for="auto-predict" title="Automatically run next frame prediction when image is changed.">Auto Predict</label>
@@ -134,6 +162,7 @@
 			<div class="insideWrapper" style="width: 100%; height: 95%;">
 				<canvas style="width: 100%; height: 100%; position:absolute; top:0px; left:0px; background-color: #000000;" id="canvas-main"></canvas>
 				<canvas style="width: 100%; height: 100%; position:absolute; top:0px; left:0px" id="canvas-draw"></canvas>
+				<div id="attr-tooltip" class="attr-tooltips" hidden>attr</div>
 			</div>
 	
 			<!-- Seek bar -->
@@ -632,6 +661,8 @@
 			checkHover();
 		}
 
+		$('#attr-tooltip').css({top: my * canvas_height + 5, left: mx * canvas_width + 5});
+
 		updateDrawCanvas();
 		event.preventDefault();
 	}
@@ -760,6 +791,29 @@
 		canvas_draw.addEventListener('dblclick', onDblClick, false);
 		document.addEventListener('mouseup', onMouseUp, false);
 		document.addEventListener('mousemove', onMouseMove, false);
+
+		setInterval(function() {
+			if (hovered_box !== null) {
+				let hb = findTracklet(hovered_box);
+				let attrs = hb.attribution;
+				if (hb !== null && attrs.length > 0) {
+					let text = '';
+					attrs.forEach(function (attr) { 
+						annotation.attributes.forEach(function (attr_name) {
+							if (attr_name.id === attr) {
+								text += attr_name.name + '<br>';
+							}
+						});
+					});
+					$('#attr-tooltip').html(text);
+					$('#attr-tooltip').attr('hidden', false);
+				} else {
+					$('#attr-tooltip').attr('hidden', true);
+				}
+			} else {
+				$('#attr-tooltip').attr('hidden', true);
+			}
+		}, 100);
 
 		// Preload images to cache
 		annotation.images.forEach(img =>

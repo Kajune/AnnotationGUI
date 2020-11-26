@@ -54,9 +54,20 @@
 	<br><br>
 
 	<hr>
-		<div class="form-group">
-			<input type="text" class="form-control" id="filter" placeholder="Filter" oninput="updateItems();">
-		</div>
+		<form class="row">
+			<div class="form-group col-9">
+				<input type="text" class="form-control" id="filter" placeholder="Filter" oninput="updateItems();">
+			</div>
+
+			<div class="form-group col-3 form-inline">
+				<span style="margin-right: 2%;">Sort by</span>
+				<select class="form-control" onchange="resort(event);">
+					<option selected>Project Name</option>
+					<option>Video Name</option>
+					<option>Last Update</option>
+				</select>
+			</div>
+		</form>
 	<hr>
 
 	<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4" id="project-cardlist">
@@ -120,6 +131,10 @@
 <script type="text/javascript">
 	var project_data = <?php echo json_encode($project_data); ?>;
 	var project_update = <?php echo json_encode($project_update); ?>;
+	var project_names = [];
+	for (let pname in project_data) {
+		project_names.push(pname);
+	}
 
 	$('#delete-project-dialog').on('show.bs.modal', function (event) {
 		var button = $(event.relatedTarget);
@@ -181,12 +196,38 @@
 		}
 	}
 
+	function strcmp(str1, str2) {
+		return ((str1 == str2) ? 0 : ((str1 > str2) ? 1 : -1));
+	}
+
+	function resort(event) {
+		let order_fn = null;
+		if (event.target.value === 'Project Name') {
+			order_fn = function (a, b) {
+				return strcmp(a, b);
+			}
+		} else if (event.target.value === 'Video Name') {
+			order_fn = function (a, b) {
+				return strcmp(project_data[a].info.video, project_data[b].info.video);
+			}
+		} else if (event.target.value === 'Last Update') {
+			order_fn = function (a, b) {
+				return strcmp(project_update[b], project_update[a]);
+			}
+		}
+
+		if (order_fn) {
+			project_names.sort(order_fn);
+			updateItems();
+		}
+	}
+
 	function updateItems() {
 		var template = $('#card-template');
 
 		$('#project-cardlist').children().remove();
 
-		for (let pname in project_data) {
+		for (let pname of project_names) {
 			if ($('#filter').val() != '' && !pname.match($('#filter').val())) {
 				continue;
 			}

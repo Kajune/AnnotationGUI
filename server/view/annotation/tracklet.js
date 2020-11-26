@@ -155,6 +155,8 @@ function delete_at_current_frame() {
 
 	annotation.annotations = annotation.annotations.filter(annot => annot.id !== selected_box);
 	setSelectedBox(null);
+	hover_list = [];
+	checkHover();
 	updateAnnotation();
 	updateDrawCanvas();
 }
@@ -170,6 +172,7 @@ function delete_in_subsequent_frames() {
 		return !(annot.tracklet_id === sb.tracklet_id && annot.image_id >= annotation.images[frame_index-1].id);
 	});
 	setSelectedBox(null);
+	checkHover();
 	updateAnnotation();
 	updateDrawCanvas();
 }
@@ -183,6 +186,7 @@ function delete_whole() {
 
 	annotation.annotations = annotation.annotations.filter(annot => annot.tracklet_id !== sb.tracklet_id);
 	setSelectedBox(null);
+	checkHover();
 	updateAnnotation();
 	updateDrawCanvas();
 }
