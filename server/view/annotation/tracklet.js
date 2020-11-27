@@ -398,6 +398,7 @@ function predict_next_frame(current_frame_index) {
 		'image1_ts': annotation.images[current_frame_index-1].timestamp,
 		'image2_ts': annotation.images[current_frame_index].timestamp,
 		'bbox': bbox,
+		'algorithm': $('input:radio[name="prediction_algorithm"]:checked').val(),
 	};
 
 	$.ajax({

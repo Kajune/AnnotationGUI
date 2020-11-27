@@ -145,11 +145,20 @@
 					<div class="button-text">End Link tracklets</div></button>
 				<button class="btn btn-secondary btn-block" id="cut-tracklet" disabled onclick="cut_tracklet();" style="padding: 0px;">
 					<div class="button-text">Cut tracklet at current frame</div></button>
-				<button class="btn btn-secondary btn-block" onclick="predict_next_frame(frame_index);" id="predict-next-frame" style="padding: 0px;">
-					<div class="button-text">Predict Next Frame</div></button>
+				<button class="btn btn-secondary btn-block" onclick="predict_next_frame(frame_index);" id="predict-next-frame">
+					Predict Next Frame</button>
 				<div class="custom-control custom-switch">
 					<input type="checkbox" class="custom-control-input" id="auto-predict" onchange="auto_predict();">
 					<label class="custom-control-label" for="auto-predict" title="Automatically run next frame prediction when image is changed.">Auto Predict</label>
+				</div>
+
+				<div class="custom-control custom-radio custom-control-inline">
+					<input type="radio" id="homography" value="homography" name="prediction_algorithm" class="custom-control-input" checked>
+					<label class="custom-control-label" for="homography">Homography</label>
+				</div>
+				<div class="custom-control custom-radio custom-control-inline">
+					<input type="radio" id="csrt" value="csrt" name="prediction_algorithm" class="custom-control-input">
+					<label class="custom-control-label" for="csrt">CSRT</label>
 				</div>
 			</div>
 
