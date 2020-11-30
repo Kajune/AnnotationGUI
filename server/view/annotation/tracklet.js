@@ -403,11 +403,11 @@ function predict_next_frame(current_frame_index) {
 
 	$.ajax({
 		url: 'predict_next_frame.php',
-		type: 'GET',
-		contentType: 'application/json',
+		type: 'POST',
+		dataType: 'json',
 		data: data,
 	}).done(function(data) {
-		JSON.parse(data).forEach(function(bb){
+		data.forEach(function(bb){
 			bb = bb.split(' ');
 			var tracklet_id = Number(bb[0]);
 			var [x, y, w, h] = [Number(bb[1]), Number(bb[2]), Number(bb[3]), Number(bb[4])];

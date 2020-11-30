@@ -38,16 +38,25 @@ for bb in data['bbox']:
 	w = float(bb[3])
 	h = float(bb[4])
 
-	cp.append(np.float32([x+w/2, y+h/2]))
+	cp.append(np.float32([[x, y], [x+w, y], [x, y+h], [x+w, y+h]]))
 
-cp = np.float32(cp).reshape(-1,1,2)
+cp = np.float32(cp).reshape(-1,4,2)
 cp = cv2.perspectiveTransform(cp, homography)
 
 for i, bb in enumerate(data['bbox']):
 	index = int(bb[0])
-	w = float(bb[3])
-	h = float(bb[4])
-	x = cp[i,0,0] - w/2
-	y = cp[i,0,1] - h/2
+	w1 = cp[i,1,0] - cp[i,0,0]
+	w2 = cp[i,3,0] - cp[i,2,0]
+	h1 = cp[i,2,1] - cp[i,0,1]
+	h2 = cp[i,3,1] - cp[i,1,1]
+
+	w = (w1 + w2) / 2
+	h = (h1 + h2) / 2
+
+	cx = np.mean(cp[i,:,0])
+	cy = np.mean(cp[i,:,1])
+
+	x = cx - w / 2
+	y = cy - h / 2
 
 	print(index, x, y, w, h)

@@ -1,5 +1,7 @@
 <?php
-	file_put_contents($_GET['project_url'].'tmp.txt', json_encode($_GET));
-	exec('python3 ../../api/predict_next_frame_'.$_GET['algorithm'].'.py '.$_GET['project_url'].'tmp.txt', $output, $return_var);
+	header("Content-Type: application/json", true);
+	file_put_contents($_POST['project_url'].'tmp.txt', json_encode($_POST));
+	exec('python3 ../../api/predict_next_frame_'.$_POST['algorithm'].'.py '.$_POST['project_url'].'tmp.txt', $output, $return_var);
 	echo json_encode($output);
+	exit;
 ?>

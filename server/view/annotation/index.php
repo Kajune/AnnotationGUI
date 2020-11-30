@@ -169,9 +169,12 @@
 		<div style="width:80%; height: 100%;">
 			<!-- Image Region -->
 			<div class="insideWrapper" style="width: 100%; height: 95%;">
+				<div style="position: relative; overflow: hidden; width: 100%; height: 100%;">
+					<div id="attr-tooltip" class="attr-tooltips" hidden>attr</div>
+				</div>
 				<canvas style="width: 100%; height: 100%; position:absolute; top:0px; left:0px; background-color: #000000;" id="canvas-main"></canvas>
 				<canvas style="width: 100%; height: 100%; position:absolute; top:0px; left:0px" id="canvas-draw"></canvas>
-				<div id="attr-tooltip" class="attr-tooltips" hidden>attr</div>
+
 			</div>
 	
 			<!-- Seek bar -->
@@ -180,7 +183,8 @@
 					<input type="number" min="1" max="100" value="1" class="form-control" id="current-frame-index" style="width: 50%;" oninput="updateFrameIndex(event.target.value);">
 					<label style="width: 50%;" for="current-frame-index" id="max-frame-index">/100</label>
 				</div>
-				<input type="range" min="1" max="100" value="1" class="slider" id="seekbar"style="width: 85%;" oninput="updateFrameIndex(event.target.value)"/>
+				<input type="range" min="1" max="100" value="1" class="slider" id="seekbar"style="width: 85%;" 
+					oninput="updateFrameIndex(event.target.value)" onkeydown="event.preventDefault()"/>
 			</form>
 		</div>
 	</div>
@@ -802,7 +806,9 @@
 		document.addEventListener('mousemove', onMouseMove, false);
 
 		setInterval(function() {
-			if (hovered_box !== null) {
+			if (($("#label-dialog").data('bs.modal') || {})._isShown || making_box || selecting_new_category || hovered_box === null) {
+				$('#attr-tooltip').attr('hidden', true);
+			} else {
 				let hb = findTracklet(hovered_box);
 				let attrs = hb.attribution;
 				if (hb !== null && attrs.length > 0) {
@@ -819,8 +825,6 @@
 				} else {
 					$('#attr-tooltip').attr('hidden', true);
 				}
-			} else {
-				$('#attr-tooltip').attr('hidden', true);
 			}
 		}, 100);
 
