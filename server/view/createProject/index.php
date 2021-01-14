@@ -124,6 +124,7 @@
 					<label for="label-specification">Label Specification or Annotation File in Progress</label><br>
 					<input type="file" name="label-specification" accept="application/json" id="label-specification" required onchange="selectLabel(event);"><br>
 					<small style="color: red;" id="label_error" hidden></small>
+					<a href="label_specification_sample.json" download>Sample</a>
 				</div>
 			</div>
 			<br>

@@ -126,8 +126,7 @@ function assignLabel() {
 			annotation.annotations[i].category_id = Number($('#category-selection').val());
 		}
 
-		if ((selecting_new_category && annotation.annotations[i].tracklet_id === sb.tracklet_id) ||
-			(!selecting_new_category && annotation.annotations[i].id === selected_box)) {
+		var apply_attr = function () {
 			var annot = annotation.annotations[i];
 			annot.attribution = [];
 			for (var j = 0; j < annotation.attributes.length; j++) {
@@ -135,9 +134,20 @@ function assignLabel() {
 					annot.attribution.push(annotation.attributes[j].id);
 				}
 			}
+		}
 
-			if (!selecting_new_category) {
+		if ($('#attr-this').prop('checked')) {
+			if (annotation.annotations[i].id === selected_box) {
+				apply_attr();
+			}
+		} else if ($('#attr-subsequent').prop('checked')) {
+			if (annotation.annotations[i].id === selected_box) {
+				apply_attr();
 				propagateTracklet(selected_box);
+			}
+		} else {
+			if (annotation.annotations[i].tracklet_id === sb.tracklet_id) {
+				apply_attr();				
 			}
 		}
 	}

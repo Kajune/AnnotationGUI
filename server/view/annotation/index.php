@@ -217,6 +217,25 @@
 							</div>
 						</template>
 					</div>
+
+					<br>
+					<div class="text-left">
+						<h6>Apply to</h6>
+						<div class="form-check">
+							<input type="radio" class="form-check-input" name="attr-apply" id="attr-this" checked>
+							<label class="form-check-label" for="attr-this">This frame</label>
+						</div>
+
+						<div class="form-check">
+							<input type="radio" class="form-check-input" name="attr-apply"  id="attr-subsequent">
+							<label class="form-check-label" for="attr-subsequent">Subsequent frames</label>
+						</div>
+
+						<div class="form-check">
+							<input type="radio" class="form-check-input" name="attr-apply"  id="attr-whole">
+							<label class="form-check-label" for="attr-whole">Whole tracklet</label>
+						</div>
+					</div>
 				</div>
 			</div>
 			<div class="modal-footer">
