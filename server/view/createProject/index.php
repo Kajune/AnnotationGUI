@@ -82,14 +82,14 @@
 			if(isset($_FILES) 
 				&& isset($_FILES['video-file']) && is_uploaded_file($_FILES['video-file']['tmp_name'])
 				&& isset($_FILES['label-specification']) && is_uploaded_file($_FILES['label-specification']['tmp_name'])){
-				exec('python3 ../../api/create_project.py '.$project_dir.' '.$project_name.' '.$annotation_fps.' '.
-					$_FILES['video-file']['name'].' '.$_FILES['video-file']['tmp_name'].' '.
-					$_FILES['label-specification']['name'].' '.$_FILES['label-specification']['tmp_name'], $output, $return_var);
+				exec('python3 ../../api/create_project.py "'.$project_dir.'" "'.$project_name.'" '.$annotation_fps.' "'.
+					$_FILES['video-file']['name'].'" "'.$_FILES['video-file']['tmp_name'].'" "'.
+					$_FILES['label-specification']['name'].'" "'.$_FILES['label-specification']['tmp_name'].'"', $output, $return_var);
 
 				// Sequential image generation is slow, so only image generation process is done in background.
 				// Note that, above process cannot be done in background because tmp file will be gone soon after executing this php block.
-				exec('python3 ../../api/create_images.py '.$project_dir.' '.$project_name.' '.$annotation_fps.' '.
-					$_FILES['video-file']['name'].' > /dev/null &', $output, $return_var);
+				exec('python3 ../../api/create_images.py "'.$project_dir.'" "'.$project_name.'" '.$annotation_fps.' "'.
+					$_FILES['video-file']['name'].'" > /dev/null &', $output, $return_var);
 
 				echo '<script type="text/javascript">successAlert()</script>';
 			} else {

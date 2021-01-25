@@ -15,8 +15,7 @@ Try following commands.
 ```
 git clone https://github.com/Kajune/AnnotationGUI
 cd AnnotationGUI
-./scripts/build_docker.sh
-./scripts/start_docker.sh
+(sudo) docker-compose up
 ```
 Then, access localhost:8686 (or specify IP address and Port as you like).
 

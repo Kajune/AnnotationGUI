@@ -1,0 +1,10 @@
+version: '3'
+services:
+  tomcat:
+    build: ./docker
+    image: kajune/annot_gui
+    container_name: annot_gui
+    ports:
+      - 8686:80
+    volumes:
+      - ./server:/var/www/html

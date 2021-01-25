@@ -48,7 +48,11 @@ else:
 	annotation['annotations'] = []
 
 	count = 0
-	while cap.isOpened():
+	frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+	fps = cap.get(cv2.CAP_PROP_FPS)
+	max_count = frame_count / fps * annotation_fps
+
+	while cap.isOpened() and count <= max_count:
 		ts = count / annotation_fps * 1000
 		cap.set(cv2.CAP_PROP_POS_MSEC, ts)
 #		ts = cap.get(cv2.CAP_PROP_POS_MSEC)
