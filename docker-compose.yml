@@ -1,6 +1,6 @@
 version: '3'
 services:
-  tomcat:
+  annot_gui:
     build: ./docker
     image: kajune/annot_gui
     container_name: annot_gui
