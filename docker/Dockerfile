@@ -8,4 +8,5 @@ RUN pip3 install opencv-contrib-python
 
 #COPY server/ /var/www/html/
 COPY php.ini /usr/local/etc/php/
-RUN mkdir -m a+rw /var/www/html/projects
+RUN mkdir /var/www/html/projects
+RUN chmod 777 /var/www/html/projects
