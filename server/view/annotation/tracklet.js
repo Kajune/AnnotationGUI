@@ -384,7 +384,7 @@ function predict_next_frame(current_frame_index) {
 		if (annot.image_id === current_frame_index - 1) {
 			// Check if the box still exists in the next frame without manually annotated
 			next_bbox.forEach(function(annot_next){
-				if (annot_next.tracklet_id === annot.tracklet_id) {
+				if (annot_next.tracklet_id === annot.tracklet_id && annot.manual) {
 					bbox.push([annot.tracklet_id, annot.bbox[0], annot.bbox[1], annot.bbox[2], annot.bbox[3]]);
 					return;
 				}

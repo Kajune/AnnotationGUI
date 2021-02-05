@@ -433,7 +433,7 @@
 			return;
 		}
 
-		if ($('#auto-predict').prop('checked')) {
+		if ($('#auto-predict').prop('checked') && frame_index + 1 === new_index) {
 			// If auto predict is enabled, predict next frame
 			predict_next_frame(frame_index);
 		}
