@@ -298,7 +298,7 @@
 			</div>
 			<div class="modal-body">
 				<ul style="text-align:left">
-					<li><b>Arrow or W/S</b>: Move frames</li>
+					<li><b>Arrow or A/D</b>: Move frames</li>
 					<li><b>Delete</b>: Delete track at current frame</li>
 					<li><b>Ctrl+Z</b>: Undo</li>
 				</ul>

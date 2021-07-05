@@ -109,7 +109,7 @@
 
 		<div class="col-lg-6">
 			<label for="project-name">Project Name</label>
-			<input type="text" class="form-control" name="project-name" pattern="^[0-9A-Za-z_]+$" placeholder="A-Z a-z 0-9 _" id="project-name" required onchange="checkInputs();">
+			<input type="text" class="form-control" name="project-name" pattern="^[0-9A-Za-z_\-]+$" placeholder="A-Z a-z 0-9 _ -" id="project-name" required onchange="checkInputs();">
 			<small style="color: red;" id="duplicate_error" hidden>Name already exists.</small>
 			<br>
 

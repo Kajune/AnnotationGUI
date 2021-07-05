@@ -2,6 +2,7 @@ import sys, os, json, subprocess
 import glob
 import collections as cl
 import cv2
+import numpy as np
 
 project_dir = sys.argv[1]
 project_name = sys.argv[2]
@@ -71,6 +72,8 @@ else:
 		image['id'] = count
 		image['timestamp'] = ts
 		annotation['images'].append(image)
+
+		np.savetxt(os.path.join(project_dir, project_name, 'tmp.txt'), np.int32([count / max_count * 100]), fmt='%d')
 
 		count += 1
 

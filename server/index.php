@@ -137,9 +137,9 @@
 	}
 
 	$('#delete-project-dialog').on('show.bs.modal', function (event) {
-		var button = $(event.relatedTarget);
-		var name = button.data('name');
-		var modal = $(this);
+		let button = $(event.relatedTarget);
+		let name = button.data('name');
+		let modal = $(this);
 		modal.find('#delete-project-name').text(name);
 		$('#delete-confirm').on('click', function (e) {
 			$.post("index.php", {'delete-project': name});
@@ -158,29 +158,29 @@
 	}
 
 	function startEditProjectName(e) {
-		var editTarget = $(e.target).parent();
+		let editTarget = $(e.target).parent();
 		editTarget.find('.project-name').attr('hidden', true);
 		editTarget.find('.project-name-input').attr('hidden', false);
 		editTarget.find('.project-name-input').find('input').val(editTarget.find('.project-name').text());
 	}
 
 	function checkProjectName(e) {
-		var editTarget = $(e.target).parent().parent();
-		var new_pname = editTarget.find('input').val();
-		var isAvailableName = checkProjectNameValidity(new_pname) || new_pname === editTarget.find('.project-name').text();
+		let editTarget = $(e.target).parent().parent();
+		let new_pname = editTarget.find('input').val();
+		let isAvailableName = checkProjectNameValidity(new_pname) || new_pname === editTarget.find('.project-name').text();
 		editTarget.find('.duplicate_error').attr('hidden', isAvailableName);
 		editTarget.find('button').attr('disabled', !isAvailableName);
 	}
 
 	function endEditProjectName(e) {
-		var editTarget = $(e.target).parent().parent().parent();
+		let editTarget = $(e.target).parent().parent().parent();
 		editTarget.find('.project-name').attr('hidden', false);
 		editTarget.find('.project-name-input').attr('hidden', true);
 		editTarget.find('.duplicate_error').attr('hidden', true);
 
-		var new_pname = editTarget.find('input').val();
+		let new_pname = editTarget.find('input').val();
 		if (new_pname !== editTarget.find('.project-name').text() && checkProjectNameValidity(new_pname)) {	
-			var data = { 
+			let data = { 
 				'name': editTarget.find('.project-name').text(), 
 				'new_name': new_pname,
 			};
@@ -223,7 +223,7 @@
 	}
 
 	function updateItems() {
-		var template = $('#card-template');
+		let template = $('#card-template');
 
 		$('#project-cardlist').children().remove();
 
@@ -231,10 +231,10 @@
 			if ($('#filter').val() != '' && !pname.match($('#filter').val())) {
 				continue;
 			}
-			var clone = template.clone().contents();
+			let clone = template.clone().contents();
 
 			// if annotation json is not initialized, this file will be created.
-			var thumb_path = pname + '/images/000000.jpg';
+			let thumb_path = pname + '/images/000000.jpg';
 			if (project_data[pname].images !== undefined) {
 				thumb_path = project_data[pname].images[0].coco_url;
 			}
@@ -251,7 +251,7 @@
 
 			clone.find('.video-filename').text(project_data[pname].info.video);
 			if (project_data[pname].annotations !== undefined && project_data[pname].images !== undefined) {
-				var progress = 0;
+				let progress = 0;
 				project_data[pname].annotations.forEach(function(annot) {
 					if (annot.manual) {
 						progress = Math.max(progress, annot.image_id+1);
@@ -259,7 +259,15 @@
 				});
 				clone.find('.annotation-progress').text(progress + '/' + project_data[pname].images.length);
 			} else {
-				clone.find('.annotation-progress').text('Preparing');
+				$.ajax({
+					type: 'GET',
+					dataType: 'text',
+					scriptCharset: 'UTF-8',
+					timeout: 10000,
+					url: 'projects/' + pname + '/tmp.txt'
+				}).done(function(data, status, xhr){
+					clone.find('.annotation-progress').text('Preparing (' + parseInt(data) + '%)');
+				});
 			}
 
 			clone.find('.project-last-update').text("Last update: " + project_update[pname]);
