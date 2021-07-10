@@ -3,13 +3,13 @@ import cv2
 import numpy as np
 
 OPENCV_OBJECT_TRACKERS = {
-	"csrt": cv2.TrackerCSRT_create,
-	"kcf": cv2.TrackerKCF_create,
-	"boosting": cv2.TrackerBoosting_create,
-	"mil": cv2.TrackerMIL_create,
-	"tld": cv2.TrackerTLD_create,
-	"medianflow": cv2.TrackerMedianFlow_create,
-	"mosse": cv2.TrackerMOSSE_create,
+	"csrt": cv2.legacy.TrackerCSRT_create,
+	"kcf": cv2.legacy.TrackerKCF_create,
+#	"boosting": cv2.TrackerBoosting_create,
+	"mil": cv2.legacy.TrackerMIL_create,
+#	"tld": cv2.TrackerTLD_create,
+#	"medianflow": cv2.TrackerMedianFlow_create,
+#	"mosse": cv2.TrackerMOSSE_create,
 }
 
 data = json.load(open(sys.argv[1]))
@@ -17,7 +17,7 @@ cap = cv2.VideoCapture(os.path.join(data['project_url'], data['video']))
 image1_ts = float(data['image1_ts'])
 image2_ts = float(data['image2_ts'])
 
-trackers = cv2.MultiTracker_create()
+trackers = cv2.legacy.MultiTracker_create()
 
 # Because OpenCV VideoCapture has samall bug on timestamp
 cap.set(cv2.CAP_PROP_POS_MSEC, image2_ts)
