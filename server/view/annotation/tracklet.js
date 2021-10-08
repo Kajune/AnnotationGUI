@@ -1,6 +1,3 @@
-var annotation = null;
-var memento = [];
-
 var next_box_id = 0;
 var next_tracklet_id = 0;
 var next_category_id = 0;
@@ -12,69 +9,6 @@ var hovered_cp = null;
 var linking_box = null;
 var no_link_cands = [];
 
-//
-// Utility
-//
-function loadAnnotation() {
-	$.ajaxSetup({ async: false });
-	// attach timestamp to prevent read cache
-	$.getJSON(project_url + 'annotation.json' + '?timestamp=' + Date.now(), (data) => {
-		annotation = data;
-	});
-	$.ajaxSetup({ async: true });
-
-	if (annotation === null || annotation.annotations === undefined || annotation.images === undefined) {
-		return false;
-	}
-
-	// get next id and color
-	if (annotation.annotations.length > 0) {
-		annotation.annotations.forEach(annot => {
-			next_box_id = Math.max(next_box_id, annot.id+1);
-			next_tracklet_id = Math.max(next_tracklet_id, annot.tracklet_id+1);
-			tracklet_colors[annot.tracklet_id] = randColor();
-		});
-	}
-
-	annotation.categories.forEach(cat => {
-		next_category_id = Math.max(next_category_id, cat.id+1);
-	});
-
-	memento.push(JSON.parse(JSON.stringify(annotation.annotations)));
-
-	return true;
-}
-
-function saveAnnotation() {
-	var savedata = { 'name': project_name, 
-		'annotation': JSON.stringify(annotation, null, '  '),
-	};
-
-	$.ajax({
-		type: "POST",
-		url: './uploadAnnotation.php',
-		dataType: 'json',
-		data: savedata,
-	}).fail(function (data){
-		alert('Server connection failed.')
-	});
-}
-
-function updateAnnotation() {
-	memento.push(JSON.stringify(annotation.annotations));
-	saveAnnotation();
-}
-
-function undoAnnotation() {
-	if (memento.length <= 1){ 
-		return;
-	}
-	memento.pop();
-	annotation.annotations = JSON.parse(memento.slice(-1)[0]);
-	updateDrawCanvas();
-	saveAnnotation();
-}
-
 function findTracklet(id) {
 	for (var i = 0; i < annotation.annotations.length; i++) {
 		if (id === annotation.annotations[i].id) {
@@ -84,10 +18,10 @@ function findTracklet(id) {
 	return null;
 }
 
-function addTracklet() {
+function addTracklet(is_video) {
 	setSelectedBox(next_box_id);
 
-	for (var i = frame_index - 1; i < annotation.images.length; i++) {
+	for (let i = frame_index - 1; i < annotation.images.length; i++) {
 		newTracklet = {
 			image_id: i,
 			bbox: [x1, y1, x2-x1, y2-y1],
@@ -99,6 +33,10 @@ function addTracklet() {
 		};
 		next_box_id++;
 		annotation.annotations.push(newTracklet);
+
+		if (!is_video) {
+			break;
+		}
 	}
 
 	tracklet_colors[next_tracklet_id] = randColor();
@@ -366,7 +304,8 @@ function auto_predict() {
 }
 
 function predict_next_frame(current_frame_index) {
-	if (annotation.images.length === current_frame_index) {
+	if (annotation.images.length === current_frame_index ||
+		!(annotation.info.type === undefined || annotation.info.type === 'video')) {
 		return;
 	}
 	$('#predict-next-frame').attr('disabled', true);

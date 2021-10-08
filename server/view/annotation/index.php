@@ -36,77 +36,17 @@
 	<script type="text/javascript" src="../../js/jquery-3.5.1.min.js"></script>
 	<script type="text/javascript" src="../../js/bootstrap.bundle.min.js"></script>
 	<link rel="stylesheet" type="text/css" href="../../css/style.css">
+	<link rel="stylesheet" type="text/css" href="../../css/main.css">
 
-	<script type="text/javascript" src="draw.js"></script>
+	<script type="text/javascript" src="./draw.js"></script>
+	<script type="text/javascript" src="./annotation.js"></script>
+	<script type="text/javascript" src="./common_control.js"></script>
 	<script type="text/javascript" src="tracklet.js"></script>
 
 	<script type="text/javascript">
 		var project_name = '<?php echo $project_name; ?>';
 		var project_url = '../../projects/' + project_name + '/';
 	</script>
-
-	<style type="text/css">
-		html, body{
-			height:100%;
-			width:100%;
-			font-size : 100%;
-			margin-left : auto;
-			margin-right : auto;
-			text-align : center;
-		}
-
-		.slider {
-			-webkit-appearance: none;
-			appearance: none;
-			background: #d3d3d3;
-			outline: none;
-			opacity: 0.7;
-			-webkit-transition: .2s;
-			transition: opacity .2s;
-			vertical-align: middle;
-		}
-
-		.slider:hover {
-			opacity: 1;
-		}
-
-		.slider::-webkit-slider-thumb {
-			-webkit-appearance: none;
-			appearance: none;
-			width: 10px;
-			height: 15px;
-			background: gray;
-			cursor: pointer;
-		}
-
-		.slider::-moz-range-thumb {
-			width: 10px;
-			height: 15px;
-			background: gray;
-			cursor: pointer;
-		}
-
-		.button-text {
-			width: 100%;
-			height: 100%;
-			padding: 2.5%;
-		}
-
-		.attr-tooltips {
-			display: block;
-			position: absolute;
-			z-index: 9999;
-			width: auto;
-			height: auto;
-			padding: 0.3em 0.5em;
-			color: black;
-			font-family: sans-serif;
-			font-weight: bold;
-			font-size: 0.5em;
-			background: white;
-			border-radius: 0.1em;
-		}
-	</style>
 </head>
 <body oncontextmenu="return false;">
 
@@ -132,18 +72,19 @@
 					<canvas class="coveringCanvas" id="canvas-thumb"></canvas>
 				</div>
 			</figure>
-			<div style="padding-top: 5%;">
-				<button class="btn btn-secondary btn-block" id="delete-at-current-frame" disabled onclick="delete_at_current_frame();" style="padding: 0px;">
+
+			<div style="padding-top: 5%;" class="video-control" hidden>
+				<button class="btn btn-secondary btn-block require-selection" id="delete-at-current-frame" disabled onclick="delete_at_current_frame();" style="padding: 0px;">
 					<div class="button-text">Delete track at current frame</div></button>
-				<button class="btn btn-secondary btn-block" id="delete-in-subsequent-frames" disabled onclick="delete_in_subsequent_frames();" style="padding: 0px;">
+				<button class="btn btn-secondary btn-block require-selection" id="delete-in-subsequent-frames" disabled onclick="delete_in_subsequent_frames();" style="padding: 0px;">
 					<div class="button-text">Delete tracks in subsequent frames</div></button>
-				<button class="btn btn-secondary btn-block" id="delete-whole" disabled data-toggle="modal" data-target="#delete-dialog" style="padding: 0px;">
+				<button class="btn btn-secondary btn-block require-selection" id="delete-whole" disabled data-toggle="modal" data-target="#delete-dialog" style="padding: 0px;">
 					<div class="button-text">Delete whole tracklet</div></button>
-				<button class="btn btn-secondary btn-block" onclick="begin_link_tracklet();" id="link-tracklet" disabled style="padding: 0px;">
+				<button class="btn btn-secondary btn-block require-selection" onclick="begin_link_tracklet();" id="link-tracklet" disabled style="padding: 0px;">
 					<div class="button-text">Link tracklets</div></button>
 				<button class="btn btn-primary btn-block" onclick="end_link_tracklet();" hidden id="end-link-tracklet" style="padding: 0px;">
 					<div class="button-text">End Link tracklets</div></button>
-				<button class="btn btn-secondary btn-block" id="cut-tracklet" disabled onclick="cut_tracklet();" style="padding: 0px;">
+				<button class="btn btn-secondary btn-block require-selection" id="cut-tracklet" disabled onclick="cut_tracklet();" style="padding: 0px;">
 					<div class="button-text">Cut tracklet at current frame</div></button>
 				<button class="btn btn-secondary btn-block" onclick="predict_next_frame(frame_index);" id="predict-next-frame">
 					Predict Next Frame</button>
@@ -160,6 +101,11 @@
 					<input type="radio" id="csrt" value="csrt" name="prediction_algorithm" class="custom-control-input">
 					<label class="custom-control-label" for="csrt">CSRT</label>
 				</div>
+			</div>
+
+			<div style="padding-top: 5%;" class="image-control" hidden>
+				<button class="btn btn-secondary btn-block require-selection" id="delete-at-current-frame" disabled onclick="delete_at_current_frame();" style="padding: 0px;">
+					<div class="button-text">Delete Bounding Box</div></button>
 			</div>
 
 			<div id="test"></div>
@@ -219,7 +165,7 @@
 					</div>
 
 					<br>
-					<div class="text-left">
+					<div class="text-left video-control" hidden>
 						<h6>Apply to</h6>
 						<div class="form-check">
 							<input type="radio" class="form-check-input" name="attr-apply" id="attr-this" checked>
@@ -240,7 +186,7 @@
 			</div>
 			<div class="modal-footer">
 				<button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="selecting_new_category = false;">Cancel</button>
-				<button type="button" class="btn btn-primary" onclick="if(selecting_new_category){addTracklet()}else{assignLabel()}" data-dismiss="modal">OK</button>
+				<button type="button" class="btn btn-primary" onclick="if(selecting_new_category){addTracklet(is_video)}else{assignLabel()}" data-dismiss="modal">OK</button>
 			</div>
 		</div>
 	</div>
@@ -308,12 +254,13 @@
 </div>
 
 <script type="text/javascript">
-	var frame_index = 1;
-
-	const anti_alias = 1;
 	const canvas_main = $('#canvas-main')[0];
 	const canvas_draw = $('#canvas-draw')[0];
 	const canvas_thumb = $('#canvas-thumb')[0];
+
+	var frame_index = 1;
+
+	const anti_alias = 1;
 	const ctx_main = canvas_main.getContext('2d');
 	const ctx_draw = canvas_draw.getContext('2d');
 	const ctx_thumb = canvas_thumb.getContext('2d');
@@ -347,6 +294,8 @@
 	var mx = null, my = null;
 	var sx = null, sy = null;
 	var x1 = null, y1 = null, x2 = null, y2 = null;
+
+	var is_video = true;
 
 	const current_image = new Image();
 	current_image.onload = () => { updateImageCanvas(); updateDrawCanvas(); };
@@ -390,19 +339,7 @@
 	//
 	function setSelectedBox(new_box) {
 		selected_box = new_box;
-		if (selected_box === null) {
-			$('#delete-at-current-frame').attr('disabled', true);
-			$('#delete-in-subsequent-frames').attr('disabled', true);
-			$('#delete-whole').attr('disabled', true);
-			$('#link-tracklet').attr('disabled', true);
-			$('#cut-tracklet').attr('disabled', true);
-		} else {
-			$('#delete-at-current-frame').attr('disabled', false);
-			$('#delete-in-subsequent-frames').attr('disabled', false);
-			$('#delete-whole').attr('disabled', false);
-			$('#link-tracklet').attr('disabled', false);
-			$('#cut-tracklet').attr('disabled', false);
-		}
+		$('.require-selection').attr('disabled', selected_box === null);
 	}
 
 	//
@@ -771,7 +708,16 @@
 			location.href = '../../';
 		}
 
-		console.log(annotation);
+		is_video = annotation.info.type === undefined || annotation.info.type === 'video';
+
+		if (annotation.info.type === undefined ||
+			annotation.info.type === 'video') {
+			$('.video-control').attr('hidden', false);
+		} else if (annotation.info.type === 'image') {
+			$('.image-control').attr('hidden', false);
+		} else {
+			alert('Unknown project type: ' + annotation.info.type);
+		}
 
 		$('#max-frame-index').text('/' + annotation.images.length);
 		$('#seekbar').attr('max', annotation.images.length);

@@ -10,3 +10,4 @@
 !*.ini
 !*.dockerignore
 !*.yml
+!server/view/createProject/label_specification_sample.json

@@ -243,13 +243,21 @@
 			clone.find('.project-name-input').val(pname);
 
 			clone.find('.go-annotation').attr('href', "./view/annotation?name=" + pname);
-
 			clone.find('.download-annotation').attr('href', 'projects/' + pname + '/annotation.json');
 			clone.find('.download-annotation').attr('download', pname + '_annotation.json');
 
 			clone.find('.delete-project').attr('data-name', pname);
 
-			clone.find('.video-filename').text(project_data[pname].info.video);
+			// treat undefined as video for back-compatibility
+			if (project_data[pname].info.type === undefined ||
+				project_data[pname].info.type === 'video') {
+				clone.find('.video-filename').text(project_data[pname].info.video);
+			} else if (project_data[pname].info.type === 'image') {
+				clone.find('.video-filename').text('Image Dataset');				
+			} else {
+				alert('Uknown project type specified: ' + project_data[pname].info.type);
+			}
+
 			if (project_data[pname].annotations !== undefined && project_data[pname].images !== undefined) {
 				let progress = 0;
 				project_data[pname].annotations.forEach(function(annot) {

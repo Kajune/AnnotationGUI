@@ -44,14 +44,14 @@
 
 <script type="text/javascript">
 	function successAlert() {
-		var template = document.getElementById('alert-success');
-		var clone = template.content.cloneNode(true);
+		let template = document.getElementById('alert-success');
+		let clone = template.content.cloneNode(true);
 		document.getElementById('container').appendChild(clone);
 	}
 
 	function failAlert(msg) {
-		var template = document.getElementById('alert-fail');
-		var clone = template.content.cloneNode(true);
+		let template = document.getElementById('alert-fail');
+		let clone = template.content.cloneNode(true);
 		clone.querySelector('.fail-msg').innerHTML = msg;
 		document.getElementById('container').appendChild(clone);
 	}
@@ -61,13 +61,13 @@
 	$project_dir = '/var/www/html/projects/';
 	$enames = scandir($project_dir);
 
-	$project_name = htmlspecialchars($_POST['project-name']);
-	$annotation_fps = $_POST['annotation-fps'];
-
 	$min_fps = 0.01;
 	$max_fps = 100;
 
 	if($_SERVER['REQUEST_METHOD'] === 'POST'){
+		$project_name = htmlspecialchars($_POST['project-name']);
+		$project_type = htmlspecialchars($_POST['project-type']);
+
 		$bad_flag = false;
 
 		foreach ($enames as $ename) {
@@ -79,21 +79,46 @@
 		}
 
 		if (!$bad_flag) {
-			if(isset($_FILES) 
-				&& isset($_FILES['video-file']) && is_uploaded_file($_FILES['video-file']['tmp_name'])
-				&& isset($_FILES['label-specification']) && is_uploaded_file($_FILES['label-specification']['tmp_name'])){
-				exec('python3 ../../api/create_project.py "'.$project_dir.'" "'.$project_name.'" '.$annotation_fps.' "'.
-					$_FILES['video-file']['name'].'" "'.$_FILES['video-file']['tmp_name'].'" "'.
-					$_FILES['label-specification']['name'].'" "'.$_FILES['label-specification']['tmp_name'].'"', $output, $return_var);
+			if ($project_type == 'video'){
+				if (isset($_FILES)
+					&& isset($_FILES['video-file']) && is_uploaded_file($_FILES['video-file']['tmp_name'])
+					&& isset($_FILES['label-specification']) && is_uploaded_file($_FILES['label-specification']['tmp_name'])) {
+					$annotation_fps = $_POST['annotation-fps'];
 
-				// Sequential image generation is slow, so only image generation process is done in background.
-				// Note that, above process cannot be done in background because tmp file will be gone soon after executing this php block.
-				exec('python3 ../../api/create_images.py "'.$project_dir.'" "'.$project_name.'" '.$annotation_fps.' "'.
-					$_FILES['video-file']['name'].'" > /dev/null &', $output, $return_var);
+					exec('python3 ../../api/create_project_video.py "'.$project_dir.'" "'.$project_name.'" '.$annotation_fps.' "'.
+						$_FILES['video-file']['name'].'" "'.$_FILES['video-file']['tmp_name'].'" "'.
+						$_FILES['label-specification']['name'].'" "'.$_FILES['label-specification']['tmp_name'].'"', $output, $return_let);
 
-				echo '<script type="text/javascript">successAlert()</script>';
+					// Sequential image generation is slow, so only image generation process is done in background.
+					// Note that, above process cannot be done in background because tmp file will be gone soon after executing this php block.
+					exec('python3 ../../api/create_images.py "'.$project_dir.'" "'.$project_name.'" '.$annotation_fps.' "'.
+						$_FILES['video-file']['name'].'" > /dev/null &', $output, $return_let);
+
+					echo '<script type="text/javascript">successAlert()</script>';
+				} else {
+					echo '<script type="text/javascript">failAlert("File upload failed.")</script>';
+				}
+			} else if ($project_type == 'image') {
+				if (isset($_FILES)
+					&& isset($_FILES['image-file'])
+					&& isset($_FILES['label-specification']) && is_uploaded_file($_FILES['label-specification']['tmp_name'])) {
+
+					for ($i=0; $i < count($_FILES['image-file']['tmp_name']); $i++) { 
+						if (!is_uploaded_file($_FILES['image-file']['tmp_name'][$i])) {
+							echo '<script type="text/javascript">failAlert("File upload partially failed: '.$_FILES['image-file']['name'][$i].'")</script>';
+						}
+					}
+
+					exec('python3 ../../api/create_project_image.py "'.$project_dir.'" "'.$project_name.'" "'.
+						base64_encode(json_encode($_FILES['image-file'])).'" "'.
+						$_FILES['label-specification']['name'].'" "'.$_FILES['label-specification']['tmp_name'].'"', $output, $return_let);
+
+					echo '<script type="text/javascript">successAlert()</script>';
+				} else {
+					echo '<script type="text/javascript">failAlert("File upload failed.")</script>';
+				}
 			} else {
-				echo '<script type="text/javascript">failAlert("File upload failed.")</script>';
+				echo '<script type="text/javascript">failAlert("Unknown project type '.$project_type.' specified.")</script>';
 			}
 		}
 	}
@@ -101,10 +126,43 @@
 
 	<form method="POST" class="form-group row" id="form" enctype="multipart/form-data">
 		<div class="col-lg-6">
-			<label for="video-file">Video File</label><br>
-			<video src="" id="video-preview" style="max-width: 30vw; height: auto;" controls></video>
-			<input type="file" name="video-file" accept="video/*" id="video-file" required onchange="selectVideo(event)"><br>
-			<small style="color: red;" id="video_error" hidden></small>
+			<div>
+				<label for="project-type">Project Type</label>
+				<select id="project-type" name="project-type" class="custom-select" onchange="onProjectTypeChange()">
+					<option value="video" selected>Video</option>
+					<option value="image">Image</option>
+				</select>
+			</div>
+			<br>
+
+			<div class="project-type-dependent type-video row">
+				<div class="col-9">
+					<label for="video-file">Video File</label><br>
+					<video src="" id="video-preview" style="max-width: 100%; height: auto;" controls></video>
+					<input type="file" name="video-file" accept="video/*" id="video-file" required onchange="selectVideo(event)" class="project-type-dependent-input type-video-input"><br>
+					<small style="color: red;" id="video_error" hidden></small>
+				</div>
+
+				<div class="col-3">
+					<label for="annotation-fps">Annotation FPS</label>
+					<input type="number" min=<?php echo $min_fps;?> max=<?php echo $max_fps;?> step=0.01 class="form-control" name="annotation-fps" id="fps" placeholder="FPS" value=1 required onchange="checkInputs();" class="project-type-dependent-input type-video-input">
+					<small style="color: red;" id="fps_error" hidden><?php echo $min_fps;?> to <?php echo $max_fps;?></small>
+				</div>
+			</div>
+
+			<div class="project-type-dependent type-image row">
+				<div class="col-6">
+					<label for="image-file">Image Files</label><br>
+					<img src="" id="image-preview" style="max-width: 100%; height: auto; background-color: black;">
+					<input type="file" name="image-file[]" accept="image/*" id="image-file" required onchange="selectImage(event)" multiple class="project-type-dependent-input type-image-input">
+					<br>
+				</div>
+				<div class="col-6">
+					<label for="image-list">Images</label><br>
+					<select class="custom-select" name="image-list" id="image-list" size="5" onchange="onChangePreviewImage()">
+					</select>
+				</div>
+			</div>
 		</div>
 
 		<div class="col-lg-6">
@@ -114,13 +172,7 @@
 			<br>
 
 			<div class="row">
-				<div class="col-3">
-					<label for="annotation-fps">Annotation FPS</label>
-					<input type="number" min=<?php echo $min_fps;?> max=<?php echo $max_fps;?> step=0.01 class="form-control" name="annotation-fps" id="fps" placeholder="FPS" value=1 required onchange="checkInputs();">
-					<small style="color: red;" id="fps_error" hidden><?php echo $min_fps;?> to <?php echo $max_fps;?></small>
-				</div>
-
-				<div class="col-9">
+				<div class="col-12">
 					<label for="label-specification">Label Specification or Annotation File in Progress</label><br>
 					<input type="file" name="label-specification" accept="application/json" id="label-specification" required onchange="selectLabel(event);"><br>
 					<small style="color: red;" id="label_error" hidden></small>
@@ -132,7 +184,7 @@
 			<div class="row">
 				<div class="col-6">
 					<label for="class-list">Class</label><br>
-					<textarea class="form-control" name="class-list" id="class-list" readonly rows="5"></textarea>					
+					<textarea class="form-control" name="class-list" id="class-list" readonly rows="5"></textarea>		
 				</div>
 				<div class="col-6">
 					<label for="attribution-list">Attribution</label><br>
@@ -163,12 +215,12 @@
 		}
 	};
 
-	var existing_names = <?php echo json_encode($enames); ?>;
+	let existing_names = <?php echo json_encode($enames); ?>;
 
 	function selectVideo(e) {
 		/*
-		var reader = new FileReader();
-		var filename = sanitaize.encode(e.target.files[0].name.split('.').slice(0, -1).join('.'));
+		let reader = new FileReader();
+		let filename = sanitaize.encode(e.target.files[0].name.split('.').slice(0, -1).join('.'));
 		reader.onload = function (e) {
 			$('#video-preview').attr('src', e.target.result);
 			if (!$('#project-name').val()) {
@@ -178,17 +230,27 @@
 		}
 		reader.readAsDataURL(e.target.files[0]);*/
 
-		var filename = sanitaize.encode(e.target.files[0].name.split('.').slice(0, -1).join('.'));
-		$('#video-preview').attr('src', URL.createObjectURL(event.target.files[0]));
+		let filename = sanitaize.encode(e.target.files[0].name.split('.').slice(0, -1).join('.'));
+		$('#video-preview').attr('src', URL.createObjectURL(e.target.files[0]));
 		if (!$('#project-name').val()) {
 			$('#project-name').val(filename);
 		}
 		checkInputs();
 	}
 
-	var jsonData = null;
+	function selectImage(e) {
+		$('#image-list').empty();
+		for (let i = 0; i < e.target.files.length; i++) {
+			let filename = sanitaize.encode(e.target.files[i].name);
+			$('#image-list').append($('<option>').val(URL.createObjectURL(e.target.files[i])).text(filename).attr('selected', i==0));
+		}
+		onChangePreviewImage();
+		checkInputs();
+	}
+
+	let jsonData = null;
 	function selectLabel(e) {
-		var reader = new FileReader();
+		let reader = new FileReader();
 		reader.onload = function (e) {
 			jsonData = e.target.result;
 			checkInputs();
@@ -197,7 +259,7 @@
 	}
 
 	function checkInputs(isOK_=true) {
-		var isOK = isOK_;
+		let isOK = isOK_;
 
 		// Check project name
 		for (const ename of existing_names) {
@@ -208,7 +270,7 @@
 		}
 
 		// Check fps
-		var fps = $('#fps').val();
+		let fps = $('#fps').val();
 		if (fps < <?php echo $min_fps;?> || <?php echo $max_fps;?> < fps) {
 			$('#fps_error').attr('hidden', false);
 			isOK = false;
@@ -219,7 +281,7 @@
 		// Check label specification
 		if (jsonData) {
 			try {
-				var label = JSON.parse(jsonData);
+				let label = JSON.parse(jsonData);
 
 				if (label.categories === undefined || label.attributes === undefined) {
 					$('#label_error').text('categories or attributes entity not set in JSON.');
@@ -229,8 +291,6 @@
 				} else {
 					$('#class-list').text(label.categories.map(x => x.name).join('\n'));
 					$('#attribution-list').text(label.attributes.map(x => x.name).join('\n'));
-					console.log(label.attributes);
-					console.log(label.categories);
 				}
 			} catch (error) {
 				$('#label_error').text(error.message);
@@ -250,6 +310,24 @@
 			$('#submit').attr('disabled', true);
 		}
 	}
+
+	function onProjectTypeChange() {
+		const type = $('#project-type').val();
+		$('.project-type-dependent').attr('hidden', true);
+		$('.type-' + type).attr('hidden', false);
+
+		$('.project-type-dependent-input').attr('required', false);
+		$('.type-' + type + '-input').attr('required', true);
+	}
+
+	function onChangePreviewImage() {
+		const img = $('#image-list').val();
+		$('#image-preview').attr('src', img);
+	}
+
+	$(function(){
+		onProjectTypeChange();
+	});
 </script>
 
 </body>
