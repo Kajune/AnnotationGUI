@@ -659,9 +659,9 @@
 			img_scale = 1;
 			img_x = 0;
 			img_y = 0;
-		} else if (img_scale > 10) {
-			scale_change *= 10 / img_scale;
-			img_scale = 10;
+		} else if (img_scale > 20) {
+			scale_change *= 20 / img_scale;
+			img_scale = 20;
 		}
 		img_x -= x;
 		img_y -= y;

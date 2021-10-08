@@ -4,7 +4,7 @@ RUN apt update
 RUN apt install -y python3 python3-pip
 RUN apt install -y ffmpeg
 RUN pip3 install --upgrade pip
-RUN pip3 install opencv-contrib-python
+RUN pip3 install opencv-contrib-python pillow
 
 #COPY server/ /var/www/html/
 COPY php.ini /usr/local/etc/php/

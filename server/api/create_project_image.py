@@ -1,5 +1,7 @@
-import sys, os, shutil, json, base64, cv2
+import sys, os, shutil, json, base64
 import collections as cl
+from PIL import Image
+Image.MAX_IMAGE_PIXELS = 1000000000
 
 project_dir = sys.argv[1]
 project_name = sys.argv[2]
@@ -33,9 +35,9 @@ if 'images' not in annotation:
 		image = cl.OrderedDict()
 		image['file_name'] = image_list_json['name'][i]
 		image['coco_url'] = os.path.join(project_name, 'images', image_list_json['name'][i])
-		img = cv2.imread(os.path.join(project_dir, image['coco_url']))
-		image['height'] = int(img.shape[0])
-		image['width'] = int(img.shape[1])
+		img = Image.open(os.path.join(project_dir, image['coco_url']))
+		image['height'] = int(img.size[0])
+		image['width'] = int(img.size[1])
 		image['id'] = i
 		annotation['images'].append(image)
 
